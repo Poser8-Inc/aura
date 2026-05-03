@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Aura",
+    "slug": "aura",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.poser8.aura",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.poser8.aura"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera"
+    ]
+  }
+}
