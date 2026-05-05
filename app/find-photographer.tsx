@@ -49,17 +49,25 @@ export default function FindPhotographerScreen() {
 
     setPhase({ kind: 'locating' })
 
+    const LOCATION_TIMEOUT_MS = 30_000
     let coords: { latitude: number; longitude: number }
     try {
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      })
+      const pos = await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('LOCATION_TIMEOUT')), LOCATION_TIMEOUT_MS),
+        ),
+      ])
       coords = pos.coords
     } catch (err) {
+      const isTimeout = err instanceof Error && err.message === 'LOCATION_TIMEOUT'
       setPhase({
         kind: 'error',
-        message:
-          err instanceof Error
+        message: isTimeout
+          ? 'Could not get your location in 30 seconds. Try again, move to an area with better GPS, or enter your city manually.'
+          : err instanceof Error
             ? err.message
             : 'Could not determine your location.',
       })

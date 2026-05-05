@@ -10,7 +10,7 @@ import directory from '@/data/aura-photographers.json'
 export interface Photographer {
   id: string
   name: string
-  address: string
+  address?: string
   city: string
   region: string
   country: string
@@ -33,7 +33,53 @@ interface Directory {
   entries: Photographer[]
 }
 
-const DIR = directory as Directory
+function isPhotographer(x: unknown): x is Photographer {
+  if (!x || typeof x !== 'object') return false
+  const o = x as Record<string, unknown>
+  // Required fields (present in every entry of the curated directory).
+  // address/phone/email/website/notes are optional in the data — see Photographer interface.
+  return (
+    typeof o.id === 'string' &&
+    typeof o.name === 'string' &&
+    typeof o.city === 'string' &&
+    typeof o.region === 'string' &&
+    typeof o.country === 'string' &&
+    typeof o.lat === 'number' &&
+    typeof o.lng === 'number' &&
+    typeof o.system === 'string' &&
+    Array.isArray(o.services) &&
+    typeof o.mailIn === 'boolean' &&
+    typeof o.verified === 'boolean' &&
+    (o.address === undefined || typeof o.address === 'string')
+  )
+}
+
+function validateDirectory(d: unknown): Directory {
+  if (!d || typeof d !== 'object') {
+    throw new Error('aura-photographers.json: not an object')
+  }
+  const o = d as Record<string, unknown>
+  if (typeof o.version !== 'number') throw new Error('aura-photographers.json: version missing or non-number')
+  if (typeof o.lastUpdated !== 'string') throw new Error('aura-photographers.json: lastUpdated missing or non-string')
+  if (!Array.isArray(o.entries)) throw new Error('aura-photographers.json: entries missing or not an array')
+  const bad = o.entries.findIndex((e) => !isPhotographer(e))
+  if (bad >= 0) throw new Error(`aura-photographers.json: entry index ${bad} fails Photographer shape`)
+  return d as Directory
+}
+
+export const directoryLoadError: string | null = (() => {
+  try {
+    validateDirectory(directory)
+    return null
+  } catch (e: any) {
+    if (__DEV__) console.error('[aura/photographers] directory invalid:', e?.message)
+    return e?.message ?? 'unknown error'
+  }
+})()
+
+const DIR: Directory = directoryLoadError === null
+  ? (directory as Directory)
+  : { version: 0, lastUpdated: '', entries: [] }
 
 export function getAllPhotographers(): Photographer[] {
   return DIR.entries

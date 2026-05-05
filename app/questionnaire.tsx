@@ -25,7 +25,7 @@ import * as Haptics from 'expo-haptics'
 import Purchases from 'react-native-purchases'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors } from '@/constants/theme'
 import { QuestionnaireAnswer, generateAuraFromAnswers } from '@/lib/auraGenerator'
-import { useStore } from '@/lib/store'
+import { useStore, setActiveReading } from '@/lib/store'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -537,11 +537,7 @@ export default function QuestionnaireScreen() {
         .filter(Boolean) as QuestionnaireAnswer[]
 
       const profile = generateAuraFromAnswers(finalAnswers)
-      // Store in global so result screen can read it
-      // (For production use zustand or AsyncStorage — this is fine for MVP)
-      ;(global as any).__auraProfile = profile
-      ;(global as any).__auraSource = 'questionnaire'
-
+      await setActiveReading({ profile, source: 'questionnaire' })
       router.push('/aura-result')
     } else {
       setIsTransitioning(true)

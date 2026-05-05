@@ -167,10 +167,55 @@ export default function PaywallScreen() {
         Alert.alert('Welcome to AURA+', 'You now have unlimited aura readings.')
       }
     } catch (err: any) {
-      if (!err?.userCancelled) {
-        if (__DEV__) console.warn('[rc][aura][purchase] purchasePackage failed:', err)
-        Alert.alert('Purchase Failed', err?.message ?? 'Something went wrong. Please try again.')
+      if (err?.userCancelled) {
+        setIsPurchasing(false)
+        return
       }
+      if (__DEV__) console.warn('[rc][aura][purchase] purchasePackage failed:', err)
+
+      const code: string | undefined = err?.code
+      let title = 'Purchase Failed'
+      let message = err?.message ?? 'Something went wrong. Please try again.'
+
+      switch (code) {
+        case 'NETWORK_ERROR':
+          title = 'Connection Problem'
+          message = 'Could not reach the App Store. Check your connection and try again.'
+          break
+        case 'STORE_PROBLEM_ERROR':
+          title = 'Store Unavailable'
+          message = 'The App Store is having trouble right now. Please try again in a moment.'
+          break
+        case 'PURCHASE_NOT_ALLOWED_ERROR':
+          title = 'Purchases Disabled'
+          message = 'Purchases are disabled on this device. Check Settings → Screen Time → Content & Privacy Restrictions.'
+          break
+        case 'PAYMENT_PENDING_ERROR':
+          title = 'Payment Pending'
+          message = 'Your payment is awaiting approval. AURA+ will activate automatically once it clears.'
+          break
+        case 'PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR':
+        case 'PRODUCT_ALREADY_PURCHASED_ERROR':
+          title = 'Product Unavailable'
+          message = 'This plan is not available right now. Try a different plan or restore your previous purchase.'
+          break
+        case 'INVALID_RECEIPT_ERROR':
+        case 'RECEIPT_ALREADY_IN_USE_ERROR':
+          title = 'Receipt Problem'
+          message = 'There was a problem validating your receipt. Try Restore Purchases.'
+          break
+        case 'INSUFFICIENT_PERMISSIONS_ERROR':
+          title = 'Account Permission'
+          message = 'Your account does not have permission to make purchases. Try a different account.'
+          break
+        case 'INVALID_CREDENTIALS_ERROR':
+        case 'CONFIGURATION_ERROR':
+          title = 'Setup Issue'
+          message = 'There is a configuration problem with in-app purchases. Please contact support.'
+          break
+      }
+
+      Alert.alert(title, message)
     } finally {
       setIsPurchasing(false)
     }

@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { AuraOrbSmall } from '@/components/AuraOrb'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors } from '@/constants/theme'
 import { AuraProfile } from '@/lib/auraGenerator'
+import { setActiveReading } from '@/lib/store'
 import { BottomNav } from './index'
 
 // ─── Stored reading record ────────────────────────────────────────────────────
@@ -61,9 +62,8 @@ function HistoryItem({ record, index }: { record: AuraRecord; index: number }) {
     minute: '2-digit',
   })
 
-  const handlePress = () => {
-    ;(global as any).__auraProfile = record.profile
-    ;(global as any).__auraSource = record.source
+  const handlePress = async () => {
+    await setActiveReading({ profile: record.profile, source: record.source })
     router.push('/aura-result')
   }
 

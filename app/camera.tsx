@@ -14,7 +14,7 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { router } from 'expo-router'
 import Purchases from 'react-native-purchases'
-import { useStore } from '@/lib/store'
+import { useStore, setActiveReading } from '@/lib/store'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -256,6 +256,7 @@ const previewStyles = StyleSheet.create({
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [capturedUri, setCapturedUri] = useState<string | null>(null)
+  const [capturedBase64, setCapturedBase64] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const cameraRef = useRef<CameraView>(null)
   const readingsUsed = useStore((s) => s.readingsUsed)
@@ -274,8 +275,7 @@ export default function CameraScreen() {
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
       )
       setCapturedUri(manipulated.uri)
-      // Store base64 for upload
-      ;(global as any).__capturedBase64 = manipulated.base64
+      setCapturedBase64(manipulated.base64 ?? null)
     } catch (e) {
       Alert.alert('Camera Error', 'Could not capture photo. Please try again.')
     }
@@ -313,7 +313,7 @@ export default function CameraScreen() {
 
     setAnalyzing(true)
     try {
-      const base64 = (global as any).__capturedBase64 ?? ''
+      const base64 = capturedBase64 ?? ''
       const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
       if (!ANON_KEY) {
         throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
@@ -329,8 +329,7 @@ export default function CameraScreen() {
       })
       const data = await resp.json()
       if (data.profile) {
-        ;(global as any).__auraProfile = data.profile
-        ;(global as any).__auraSource = 'camera'
+        await setActiveReading({ profile: data.profile, source: 'camera' })
         router.push('/aura-result')
       } else {
         throw new Error('No profile returned')

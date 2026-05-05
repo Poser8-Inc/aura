@@ -24,6 +24,7 @@ import Animated, {
 import { AuraOrb } from '@/components/AuraOrb'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors, ChakraInfo } from '@/constants/theme'
 import { AuraProfile, ChakraStatus } from '@/lib/auraGenerator'
+import { getActiveReading } from '@/lib/store'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const ORB_SIZE = Math.min(SCREEN_WIDTH * 0.68, 260)
@@ -263,21 +264,37 @@ function buildPlaceholderReading(profile: AuraProfile): AuraReading {
 // ─── Main result screen ───────────────────────────────────────────────────────
 
 export default function AuraResultScreen() {
-  const profile: AuraProfile | null = (global as any).__auraProfile ?? null
-  const source: 'questionnaire' | 'camera' = (global as any).__auraSource ?? 'questionnaire'
+  const [profile, setProfile] = useState<AuraProfile | null>(null)
+  const [source, setSource] = useState<'questionnaire' | 'camera'>('questionnaire')
+  const [hydrated, setHydrated] = useState(false)
 
   const [reading, setReading] = useState<AuraReading | null>(null)
   const [loadingReading, setLoadingReading] = useState(false)
 
   useEffect(() => {
-    if (!profile) return
+    let cancelled = false
+    getActiveReading().then((r) => {
+      if (cancelled) return
+      if (r) {
+        setProfile(r.profile)
+        setSource(r.source)
+      }
+      setHydrated(true)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!hydrated || !profile) return
     // Immediately show placeholder — no wait
     setReading(buildPlaceholderReading(profile))
     // Then try to fetch from Claude via Supabase Edge Function
-    fetchClaudeReading(profile)
-  }, [])
+    fetchClaudeReading(profile, () => cancelled)
+    return () => { cancelled = true }
+  }, [hydrated, profile])
 
-  const fetchClaudeReading = async (p: AuraProfile) => {
+  const fetchClaudeReading = async (p: AuraProfile, isCancelled: () => boolean = () => false) => {
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
     if (!oracleUrl) {
       console.error(
@@ -307,16 +324,19 @@ export default function AuraResultScreen() {
           source,
         }),
       })
+      if (isCancelled()) return
       if (resp.ok) {
         const data = await resp.json()
+        if (isCancelled()) return
         if (data.reading) setReading(data.reading)
       } else {
         console.warn('[aura/aura-result] oracle returned non-OK status:', resp.status)
       }
     } catch (e) {
+      if (isCancelled()) return
       console.warn('[aura/aura-result] oracle fetch failed, keeping placeholder:', e)
     } finally {
-      setLoadingReading(false)
+      if (!isCancelled()) setLoadingReading(false)
     }
   }
 
@@ -327,6 +347,14 @@ export default function AuraResultScreen() {
       message: `My aura is ${colorInfo?.label ?? profile.primaryColor} — ${colorInfo?.trait ?? ''}.\n\nDiscover yours with the Aura app.`,
       title: 'My Aura Reading',
     })
+  }
+
+  if (!hydrated) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.aura.violet} />
+      </View>
+    )
   }
 
   if (!profile) {
