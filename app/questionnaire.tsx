@@ -519,7 +519,11 @@ export default function QuestionnaireScreen() {
       try {
         const customerInfo = await Purchases.getCustomerInfo()
         isPremium = !!customerInfo.entitlements.active['premium']
-      } catch {}
+      } catch (err) {
+        if (__DEV__) console.warn('[rc][aura][questionnaire] getCustomerInfo failed:', err)
+        // isPremium stays false (defensive). Don't reroute to paywall on transient RC errors —
+        // free-tier counter-based gate below already enforces correct UX.
+      }
 
       if (!isPremium && readingsUsed >= 2) {
         router.push('/paywall')

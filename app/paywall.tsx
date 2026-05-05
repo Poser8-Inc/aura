@@ -92,27 +92,40 @@ export default function PaywallScreen() {
   const [packages, setPackages] = useState<Partial<Record<Plan, PurchasesPackage>>>({})
   const [isPurchasing, setIsPurchasing] = useState(false)
   const [isRestoring, setIsRestoring] = useState(false)
+  const [offeringsError, setOfferingsError] = useState<string | null>(null)
 
   useEffect(() => {
-    Purchases.getOfferings().then((offerings) => {
-      const current = offerings.current
-      if (!current) return
-      const pkgs: Partial<Record<Plan, PurchasesPackage>> = {}
-      for (const pkg of current.availablePackages) {
-        if (pkg.identifier === '$rc_monthly' || pkg.identifier === 'monthly') pkgs.monthly = pkg
-        if (pkg.identifier === '$rc_annual' || pkg.identifier === 'annual') pkgs.annual = pkg
-        if (pkg.identifier === '$rc_lifetime' || pkg.identifier === 'lifetime') pkgs.lifetime = pkg
-      }
-      setPackages(pkgs)
-    }).catch((err) => console.warn('[paywall] getOfferings error:', err))
+    let cancelled = false
+    Purchases.getOfferings()
+      .then((offerings) => {
+        if (cancelled) return
+        const current = offerings.current
+        if (!current) {
+          setOfferingsError('Pricing unavailable. Please try again in a moment.')
+          return
+        }
+        const pkgs: Partial<Record<Plan, PurchasesPackage>> = {}
+        for (const pkg of current.availablePackages) {
+          if (pkg.identifier === '$rc_monthly' || pkg.identifier === 'monthly') pkgs.monthly = pkg
+          if (pkg.identifier === '$rc_annual' || pkg.identifier === 'annual') pkgs.annual = pkg
+          if (pkg.identifier === '$rc_lifetime' || pkg.identifier === 'lifetime') pkgs.lifetime = pkg
+        }
+        setPackages(pkgs)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (__DEV__) console.warn('[rc][aura][paywall-offerings] getOfferings failed:', err)
+        setOfferingsError('Pricing unavailable. Check your connection and try again.')
+      })
+    return () => { cancelled = true }
   }, [])
 
-  const monthlyPrice = packages.monthly?.product.priceString ?? '$4.99'
-  const annualPrice = packages.annual?.product.priceString ?? '$24.99'
-  const lifetimePrice = packages.lifetime?.product.priceString ?? '$79.99'
+  const monthlyPrice = packages.monthly?.product.priceString ?? '—'
+  const annualPrice = packages.annual?.product.priceString ?? '—'
+  const lifetimePrice = packages.lifetime?.product.priceString ?? '—'
   const annualMonthly = packages.annual
     ? `$${(packages.annual.product.price / 12).toFixed(2)}/mo`
-    : '$2.08/mo'
+    : '—'
 
   const PLANS = [
     {
@@ -155,7 +168,7 @@ export default function PaywallScreen() {
       }
     } catch (err: any) {
       if (!err?.userCancelled) {
-        console.error('[paywall] Purchase error:', err)
+        if (__DEV__) console.warn('[rc][aura][purchase] purchasePackage failed:', err)
         Alert.alert('Purchase Failed', err?.message ?? 'Something went wrong. Please try again.')
       }
     } finally {
@@ -174,7 +187,7 @@ export default function PaywallScreen() {
         Alert.alert('No Purchases Found', 'No previous purchases were found for this account.')
       }
     } catch (err: any) {
-      console.error('[paywall] Restore error:', err)
+      if (__DEV__) console.warn('[rc][aura][restore] restorePurchases failed:', err)
       Alert.alert('Restore Failed', err?.message ?? 'Could not restore purchases.')
     } finally {
       setIsRestoring(false)
@@ -212,6 +225,13 @@ export default function PaywallScreen() {
           ))}
         </Animated.View>
 
+        {/* Offerings error banner */}
+        {offeringsError && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{offeringsError}</Text>
+          </View>
+        )}
+
         {/* Plan selector */}
         <Animated.View entering={FadeInDown.delay(400)} style={styles.planBlock}>
           {PLANS.map((plan) => (
@@ -248,9 +268,18 @@ export default function PaywallScreen() {
         {/* CTA */}
         <Animated.View entering={FadeInDown.delay(550)} style={styles.ctaBlock}>
           <TouchableOpacity
-            style={[styles.ctaBtn, isPurchasing && styles.ctaBtnLoading]}
+            style={[
+              styles.ctaBtn,
+              isPurchasing && styles.ctaBtnLoading,
+              (offeringsError !== null || !packages[selectedPlan]) && styles.ctaBtnLoading,
+            ]}
             onPress={handlePurchase}
-            disabled={isPurchasing || isRestoring}
+            disabled={
+              isPurchasing ||
+              isRestoring ||
+              offeringsError !== null ||
+              !packages[selectedPlan]
+            }
             activeOpacity={0.85}
           >
             {isPurchasing ? (
@@ -336,6 +365,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     gap: Spacing.md,
+  },
+  errorBanner: {
+    backgroundColor: 'rgba(220,80,80,0.12)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(220,80,80,0.4)',
+  },
+  errorBannerText: {
+    ...Typography.bodySmall,
+    color: '#ffb3b3',
+    textAlign: 'center',
   },
   featureRow: {
     flexDirection: 'row',

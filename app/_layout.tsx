@@ -12,8 +12,12 @@ export default function RootLayout() {
       ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? ''
       : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? ''
     if (apiKey) {
-      Purchases.setLogLevel(LOG_LEVEL.VERBOSE)
-      Purchases.configure({ apiKey })
+      if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.VERBOSE)
+      try {
+        Purchases.configure({ apiKey })
+      } catch (err) {
+        if (__DEV__) console.warn('[rc][aura][configure] Purchases.configure failed:', err)
+      }
     }
   }, [])
 
