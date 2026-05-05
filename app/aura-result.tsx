@@ -291,9 +291,17 @@ export default function AuraResultScreen() {
     }
     setLoadingReading(true)
     try {
+      const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+      if (!ANON_KEY) {
+        throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
+      }
       const resp = await fetch(oracleUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'apikey': ANON_KEY,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           profile: p,
           source,

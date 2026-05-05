@@ -310,9 +310,17 @@ export default function CameraScreen() {
     setAnalyzing(true)
     try {
       const base64 = (global as any).__capturedBase64 ?? ''
+      const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+      if (!ANON_KEY) {
+        throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
+      }
       const resp = await fetch(oracleUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${ANON_KEY}`,
+          'apikey': ANON_KEY,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ imageBase64: base64, source: 'camera' }),
       })
       const data = await resp.json()
