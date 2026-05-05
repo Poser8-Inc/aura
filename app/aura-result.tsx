@@ -25,6 +25,7 @@ import { AuraOrb } from '@/components/AuraOrb'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors, ChakraInfo } from '@/constants/theme'
 import { AuraProfile, ChakraStatus } from '@/lib/auraGenerator'
 import { getActiveReading } from '@/lib/store'
+import { log } from '@/lib/log'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const ORB_SIZE = Math.min(SCREEN_WIDTH * 0.68, 260)
@@ -297,7 +298,7 @@ export default function AuraResultScreen() {
   const fetchClaudeReading = async (p: AuraProfile, isCancelled: () => boolean = () => false) => {
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
     if (!oracleUrl) {
-      console.error(
+      log.error(
         '[aura/aura-result] EXPO_PUBLIC_AURA_ORACLE_URL is not set — using placeholder only'
       )
       Alert.alert(
@@ -330,11 +331,11 @@ export default function AuraResultScreen() {
         if (isCancelled()) return
         if (data.reading) setReading(data.reading)
       } else {
-        console.warn('[aura/aura-result] oracle returned non-OK status:', resp.status)
+        log.warn('[aura/aura-result] oracle returned non-OK status:', resp.status)
       }
     } catch (e) {
       if (isCancelled()) return
-      console.warn('[aura/aura-result] oracle fetch failed, keeping placeholder:', e)
+      log.warn('[aura/aura-result] oracle fetch failed, keeping placeholder:', e)
     } finally {
       if (!isCancelled()) setLoadingReading(false)
     }

@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import Purchases, { type PurchasesPackage } from 'react-native-purchases'
 import { Colors, Spacing, BorderRadius, Typography } from '@/constants/theme'
+import { log } from '@/lib/log'
 
 const { width: W } = Dimensions.get('window')
 
@@ -114,7 +115,7 @@ export default function PaywallScreen() {
       })
       .catch((err) => {
         if (cancelled) return
-        if (__DEV__) console.warn('[rc][aura][paywall-offerings] getOfferings failed:', err)
+        log.warn('[rc][aura][paywall-offerings] getOfferings failed:', err)
         setOfferingsError('Pricing unavailable. Check your connection and try again.')
       })
     return () => { cancelled = true }
@@ -171,7 +172,7 @@ export default function PaywallScreen() {
         setIsPurchasing(false)
         return
       }
-      if (__DEV__) console.warn('[rc][aura][purchase] purchasePackage failed:', err)
+      log.warn('[rc][aura][purchase] purchasePackage failed:', err)
 
       const code: string | undefined = err?.code
       let title = 'Purchase Failed'
@@ -232,7 +233,7 @@ export default function PaywallScreen() {
         Alert.alert('No Purchases Found', 'No previous purchases were found for this account.')
       }
     } catch (err: any) {
-      if (__DEV__) console.warn('[rc][aura][restore] restorePurchases failed:', err)
+      log.warn('[rc][aura][restore] restorePurchases failed:', err)
       Alert.alert('Restore Failed', err?.message ?? 'Could not restore purchases.')
     } finally {
       setIsRestoring(false)

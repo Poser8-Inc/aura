@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { AuraProfile } from './auraGenerator'
+import { log } from './log'
 
 export interface AppState {
   readingsUsed: number
@@ -26,7 +27,7 @@ export async function setActiveReading(r: ActiveReading): Promise<void> {
   try {
     await AsyncStorage.setItem(ACTIVE_READING_KEY, JSON.stringify(r))
   } catch (e) {
-    if (__DEV__) console.warn('[aura/store] setActiveReading failed:', e)
+    log.warn('[aura/store] setActiveReading failed:', e)
     throw e
   }
 }
@@ -41,7 +42,7 @@ export async function getActiveReading(): Promise<ActiveReading | null> {
     if (parsed.source !== 'questionnaire' && parsed.source !== 'camera') return null
     return parsed as ActiveReading
   } catch (e) {
-    if (__DEV__) console.warn('[aura/store] getActiveReading failed:', e)
+    log.warn('[aura/store] getActiveReading failed:', e)
     return null
   }
 }

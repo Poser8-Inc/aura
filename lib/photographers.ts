@@ -6,6 +6,7 @@
 // wired yet — see supabase/functions/find-pro/).
 
 import directory from '@/data/aura-photographers.json'
+import { log } from './log'
 
 export interface Photographer {
   id: string
@@ -72,7 +73,7 @@ export const directoryLoadError: string | null = (() => {
     validateDirectory(directory)
     return null
   } catch (e: any) {
-    if (__DEV__) console.error('[aura/photographers] directory invalid:', e?.message)
+    log.error('[aura/photographers] directory invalid:', e?.message)
     return e?.message ?? 'unknown error'
   }
 })()

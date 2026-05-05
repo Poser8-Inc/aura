@@ -15,6 +15,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { router } from 'expo-router'
 import Purchases from 'react-native-purchases'
 import { useStore, setActiveReading } from '@/lib/store'
+import { log } from '@/lib/log'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -288,7 +289,7 @@ export default function CameraScreen() {
       const customerInfo = await Purchases.getCustomerInfo()
       isPremium = !!customerInfo.entitlements.active['premium']
     } catch (err) {
-      if (__DEV__) console.warn('[rc][aura][camera] getCustomerInfo failed:', err)
+      log.warn('[rc][aura][camera] getCustomerInfo failed:', err)
       // isPremium stays false (defensive). Don't reroute to paywall on transient RC errors —
       // free-tier counter-based gate below already enforces correct UX.
     }
@@ -301,7 +302,7 @@ export default function CameraScreen() {
 
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
     if (!oracleUrl) {
-      console.error(
+      log.error(
         '[aura/camera] EXPO_PUBLIC_AURA_ORACLE_URL is not set — aura camera disabled'
       )
       Alert.alert(

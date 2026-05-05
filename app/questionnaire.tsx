@@ -26,6 +26,7 @@ import Purchases from 'react-native-purchases'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors } from '@/constants/theme'
 import { QuestionnaireAnswer, generateAuraFromAnswers } from '@/lib/auraGenerator'
 import { useStore, setActiveReading } from '@/lib/store'
+import { log } from '@/lib/log'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -520,7 +521,7 @@ export default function QuestionnaireScreen() {
         const customerInfo = await Purchases.getCustomerInfo()
         isPremium = !!customerInfo.entitlements.active['premium']
       } catch (err) {
-        if (__DEV__) console.warn('[rc][aura][questionnaire] getCustomerInfo failed:', err)
+        log.warn('[rc][aura][questionnaire] getCustomerInfo failed:', err)
         // isPremium stays false (defensive). Don't reroute to paywall on transient RC errors —
         // free-tier counter-based gate below already enforces correct UX.
       }
