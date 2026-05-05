@@ -93,6 +93,9 @@ function ColorCard({ colorKey }: { colorKey: AuraColorKey }) {
     <TouchableOpacity
       style={[colorCardStyles.container, { borderLeftColor: info.hex }]}
       onPress={toggle}
+      accessibilityRole="button"
+      accessibilityLabel={`${info.label}, ${info.chakra}, tap to ${expanded ? 'collapse' : 'expand'}`}
+      accessibilityState={{ expanded }}
       activeOpacity={0.85}
     >
       <View style={colorCardStyles.header}>
@@ -352,6 +355,8 @@ export default function LearnScreen() {
         <TouchableOpacity
           style={learnCtaStyles.cta}
           onPress={() => router.push('/find-photographer')}
+          accessibilityRole="link"
+          accessibilityLabel="Find a professional aura photographer"
           activeOpacity={0.85}
         >
           <Text style={learnCtaStyles.ctaTitle}>Want it photographed?</Text>

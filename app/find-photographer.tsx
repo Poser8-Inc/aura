@@ -99,6 +99,8 @@ export default function FindPhotographerScreen() {
           onPress={() => router.back()}
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="link"
+          accessibilityLabel="Back"
         >
           <Text style={styles.backBtnText}>← Back</Text>
         </TouchableOpacity>
@@ -163,7 +165,13 @@ function DeniedState({ canAskAgain, onRetry }: { canAskAgain: boolean; onRetry: 
         don't store or share it — the search runs on your device.
       </Text>
       {canAskAgain ? (
-        <TouchableOpacity style={styles.primaryButton} onPress={onRetry} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={onRetry}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          activeOpacity={0.85}
+        >
           <Text style={styles.primaryButtonText}>Try Again</Text>
         </TouchableOpacity>
       ) : (
@@ -179,6 +187,8 @@ function DeniedState({ canAskAgain, onRetry }: { canAskAgain: boolean; onRetry: 
               ],
             )
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
           activeOpacity={0.85}
         >
           <Text style={styles.primaryButtonText}>Open Settings</Text>
@@ -193,7 +203,13 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
     <Animated.View entering={FadeIn.duration(400)} style={styles.center}>
       <Text style={styles.deniedTitle}>Something went wrong</Text>
       <Text style={styles.deniedBody}>{message}</Text>
-      <TouchableOpacity style={styles.primaryButton} onPress={onRetry} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={onRetry}
+        accessibilityRole="button"
+        accessibilityLabel="Try again"
+        activeOpacity={0.85}
+      >
         <Text style={styles.primaryButtonText}>Try Again</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -297,16 +313,34 @@ function PhotographerCard({ photographer }: { photographer: RankedPhotographer }
         <Text style={styles.cardNotes}>{photographer.notes}</Text>
       )}
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={openMaps} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={openMaps}
+          accessibilityRole="link"
+          accessibilityLabel={`Open ${photographer.name} in Maps`}
+          activeOpacity={0.8}
+        >
           <Text style={styles.actionText}>Maps</Text>
         </TouchableOpacity>
         {photographer.website && (
-          <TouchableOpacity style={styles.actionButton} onPress={openWebsite} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={openWebsite}
+            accessibilityRole="link"
+            accessibilityLabel={`Open ${photographer.name} website`}
+            activeOpacity={0.8}
+          >
             <Text style={styles.actionText}>Website</Text>
           </TouchableOpacity>
         )}
         {photographer.phone && (
-          <TouchableOpacity style={styles.actionButton} onPress={callPhone} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={callPhone}
+            accessibilityRole="link"
+            accessibilityLabel={`Call ${photographer.name}`}
+            activeOpacity={0.8}
+          >
             <Text style={styles.actionText}>Call</Text>
           </TouchableOpacity>
         )}

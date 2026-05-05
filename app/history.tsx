@@ -69,7 +69,13 @@ function HistoryItem({ record, index }: { record: AuraRecord; index: number }) {
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 80).duration(400)}>
-      <TouchableOpacity style={itemStyles.container} onPress={handlePress} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={itemStyles.container}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${primaryLabel} aura reading from ${formattedDate}`}
+        activeOpacity={0.85}
+      >
         {/* Timeline line + orb */}
         <View style={itemStyles.timeline}>
           <View style={[itemStyles.timelineDot, { backgroundColor: primaryHex }]} />
@@ -216,6 +222,8 @@ function EmptyHistory() {
       <TouchableOpacity
         style={emptyStyles.button}
         onPress={() => router.push('/questionnaire')}
+        accessibilityRole="link"
+        accessibilityLabel="Take a reading"
         activeOpacity={0.85}
       >
         <Text style={emptyStyles.buttonText}>Take a Reading</Text>

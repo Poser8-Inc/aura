@@ -247,7 +247,12 @@ export default function PaywallScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Close button */}
-      <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+      <TouchableOpacity
+        style={styles.closeBtn}
+        onPress={handleClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close paywall"
+      >
         <Text style={styles.closeBtnText}>✕</Text>
       </TouchableOpacity>
 
@@ -289,6 +294,9 @@ export default function PaywallScreen() {
                 plan.highlight && styles.planCardHighlight,
               ]}
               onPress={() => setSelectedPlan(plan.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Select ${plan.label} plan, ${plan.price} ${plan.sub}`}
+              accessibilityState={{ selected: selectedPlan === plan.id }}
               activeOpacity={0.8}
             >
               {plan.badge && (
@@ -326,6 +334,9 @@ export default function PaywallScreen() {
               offeringsError !== null ||
               !packages[selectedPlan]
             }
+            accessibilityRole="button"
+            accessibilityLabel="Unlock AURA Plus"
+            accessibilityState={{ disabled: isPurchasing || isRestoring || offeringsError !== null || !packages[selectedPlan] }}
             activeOpacity={0.85}
           >
             {isPurchasing ? (
@@ -339,6 +350,9 @@ export default function PaywallScreen() {
             style={styles.restoreBtn}
             onPress={handleRestore}
             disabled={isPurchasing || isRestoring}
+            accessibilityRole="button"
+            accessibilityLabel="Restore purchases"
+            accessibilityState={{ disabled: isPurchasing || isRestoring }}
           >
             {isRestoring ? (
               <ActivityIndicator color={Colors.textMuted} size="small" />

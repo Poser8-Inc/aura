@@ -362,7 +362,12 @@ export default function AuraResultScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: Colors.textMuted, ...Typography.body }}>No reading found. Take the questionnaire first.</Text>
-        <TouchableOpacity onPress={() => router.replace('/')} style={{ marginTop: Spacing.xl }}>
+        <TouchableOpacity
+          onPress={() => router.replace('/')}
+          style={{ marginTop: Spacing.xl }}
+          accessibilityRole="link"
+          accessibilityLabel="Go home"
+        >
           <Text style={{ color: Colors.aura.violet, ...Typography.body }}>Go Home</Text>
         </TouchableOpacity>
       </View>
@@ -392,7 +397,12 @@ export default function AuraResultScreen() {
           />
 
           {/* Back button */}
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="link"
+            accessibilityLabel="Back"
+          >
             <Text style={styles.backText}>←  Back</Text>
           </TouchableOpacity>
 
@@ -497,13 +507,21 @@ export default function AuraResultScreen() {
 
           {/* Share button */}
           <Animated.View entering={FadeInDown.delay(700).duration(500)} style={styles.shareBlock}>
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleShare}
+              accessibilityRole="button"
+              accessibilityLabel="Share my aura"
+              activeOpacity={0.85}
+            >
               <Text style={styles.shareButtonText}>Share My Aura</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.findPhotographerCta}
               onPress={() => router.push('/find-photographer')}
+              accessibilityRole="link"
+              accessibilityLabel="Find a professional aura photographer"
               activeOpacity={0.85}
             >
               <Text style={styles.findPhotographerCtaTitle}>
@@ -514,7 +532,12 @@ export default function AuraResultScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.homeLink} onPress={() => router.replace('/')}>
+            <TouchableOpacity
+              style={styles.homeLink}
+              onPress={() => router.replace('/')}
+              accessibilityRole="link"
+              accessibilityLabel="Back to home"
+            >
               <Text style={styles.homeLinkText}>← Back to Home</Text>
             </TouchableOpacity>
           </Animated.View>

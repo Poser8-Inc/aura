@@ -144,10 +144,21 @@ function PhotoPreview({
       {/* Buttons */}
       {!analyzing && (
         <View style={previewStyles.buttonRow}>
-          <TouchableOpacity style={previewStyles.retakeButton} onPress={onRetake}>
+          <TouchableOpacity
+            style={previewStyles.retakeButton}
+            onPress={onRetake}
+            accessibilityRole="button"
+            accessibilityLabel="Retake photo"
+          >
             <Text style={previewStyles.retakeText}>Retake</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={previewStyles.analyzeButton} onPress={onAnalyze} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={previewStyles.analyzeButton}
+            onPress={onAnalyze}
+            accessibilityRole="button"
+            accessibilityLabel="Read my aura"
+            activeOpacity={0.85}
+          >
             <Text style={previewStyles.analyzeText}>Read My Aura</Text>
           </TouchableOpacity>
         </View>
@@ -358,10 +369,20 @@ export default function CameraScreen() {
           <Text style={camStyles.permSub}>
             The Aura Camera needs access to your front camera to read your energy field.
           </Text>
-          <TouchableOpacity style={camStyles.permButton} onPress={requestPermission}>
+          <TouchableOpacity
+            style={camStyles.permButton}
+            onPress={requestPermission}
+            accessibilityRole="button"
+            accessibilityLabel="Allow camera access"
+          >
             <Text style={camStyles.permButtonText}>Allow Camera</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={camStyles.backLink} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={camStyles.backLink}
+            onPress={() => router.back()}
+            accessibilityRole="link"
+            accessibilityLabel="Go back"
+          >
             <Text style={camStyles.backLinkText}>← Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -386,7 +407,12 @@ export default function CameraScreen() {
 
           {/* Top instruction */}
           <View style={camStyles.topHint}>
-            <TouchableOpacity onPress={() => router.back()} style={camStyles.closeButton}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={camStyles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close camera"
+            >
               <Text style={camStyles.closeText}>✕</Text>
             </TouchableOpacity>
             <Text style={camStyles.hintTitle}>Aura Camera</Text>
@@ -406,7 +432,13 @@ export default function CameraScreen() {
 
           {/* Shutter */}
           <View style={camStyles.shutterRow}>
-            <TouchableOpacity style={camStyles.shutter} onPress={handleCapture} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={camStyles.shutter}
+              onPress={handleCapture}
+              accessibilityRole="button"
+              accessibilityLabel="Capture photo"
+              activeOpacity={0.85}
+            >
               <View style={camStyles.shutterInner} />
             </TouchableOpacity>
           </View>

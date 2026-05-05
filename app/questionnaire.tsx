@@ -238,6 +238,9 @@ function ColorSwatch({
           selected && { borderColor: colorHex, backgroundColor: colorHex + '22' },
         ]}
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}${sublabel ? ', ' + sublabel : ''}`}
+        accessibilityState={{ selected }}
         activeOpacity={0.8}
       >
         <View style={[swatchStyles.dot, { backgroundColor: colorHex }]} />
@@ -342,6 +345,9 @@ function AnswerOption({
       <TouchableOpacity
         style={optStyles.inner}
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}${sublabel ? ', ' + sublabel : ''}`}
+        accessibilityState={{ selected }}
         activeOpacity={0.85}
       >
         <View style={[optStyles.indicator, selected && optStyles.indicatorActive]}>
@@ -565,7 +571,12 @@ export default function QuestionnaireScreen() {
     <SafeAreaView style={qStyles.container}>
       {/* Top bar */}
       <View style={qStyles.topBar}>
-        <TouchableOpacity onPress={handleBack} style={qStyles.backButton}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={qStyles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
           <Text style={qStyles.backArrow}>←</Text>
         </TouchableOpacity>
         <ProgressBar current={currentIndex + (canAdvance ? 1 : 0)} total={QUESTIONS.length} />
@@ -588,6 +599,9 @@ export default function QuestionnaireScreen() {
         <TouchableOpacity
           style={[qStyles.nextButton, !canAdvance && qStyles.nextButtonDisabled]}
           onPress={handleNext}
+          accessibilityRole="button"
+          accessibilityLabel={isLastQuestion ? 'Reveal my aura' : 'Continue'}
+          accessibilityState={{ disabled: !canAdvance }}
           activeOpacity={canAdvance ? 0.85 : 1}
         >
           <Text style={[qStyles.nextButtonText, !canAdvance && qStyles.nextButtonTextDisabled]}>
