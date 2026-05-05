@@ -13,6 +13,8 @@ import {
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { router } from 'expo-router'
+import Purchases from 'react-native-purchases'
+import { useStore } from '@/lib/store'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -37,8 +39,8 @@ function CropRing({ size }: { size: number }) {
   useEffect(() => {
     glow.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sine) }),
-        withTiming(0.4, { duration: 1800, easing: Easing.inOut(Easing.sine) }),
+        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.4, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, false,
     )
@@ -256,6 +258,8 @@ export default function CameraScreen() {
   const [capturedUri, setCapturedUri] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const cameraRef = useRef<CameraView>(null)
+  const readingsUsed = useStore((s) => s.readingsUsed)
+  const incrementReadings = useStore((s) => s.incrementReadings)
 
   const handleCapture = async () => {
     if (!cameraRef.current) return
@@ -278,6 +282,19 @@ export default function CameraScreen() {
   }
 
   const handleAnalyze = async () => {
+    // Check entitlement before analysis
+    let isPremium = false
+    try {
+      const customerInfo = await Purchases.getCustomerInfo()
+      isPremium = !!customerInfo.entitlements.active['premium']
+    } catch {}
+
+    if (!isPremium && readingsUsed >= 2) {
+      router.push('/paywall')
+      return
+    }
+    incrementReadings()
+
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
     if (!oracleUrl) {
       // No Supabase yet — go to result with a generated profile anyway

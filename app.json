@@ -8,14 +8,38 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "com.poser8.aura",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Aura uses your location to find professional aura photographers near you. Your location is never stored or shared."
+      }
     },
     "android": {
-      "package": "com.poser8.aura"
+      "package": "com.poser8.aura",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07080F"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
-      "expo-camera"
-    ]
+      "expo-camera",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Aura uses your location to find professional aura photographers near you. Your location is never stored or shared.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#07080F"
+    }
   }
 }

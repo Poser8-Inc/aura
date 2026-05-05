@@ -22,8 +22,10 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated'
 import * as Haptics from 'expo-haptics'
+import Purchases from 'react-native-purchases'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors } from '@/constants/theme'
 import { QuestionnaireAnswer, generateAuraFromAnswers } from '@/lib/auraGenerator'
+import { useStore } from '@/lib/store'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -490,6 +492,8 @@ export default function QuestionnaireScreen() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(QUESTIONS.length).fill(null))
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const readingsUsed = useStore((s) => s.readingsUsed)
+  const incrementReadings = useStore((s) => s.incrementReadings)
 
   const currentQuestion = QUESTIONS[currentIndex]
   const currentAnswer = answers[currentIndex]
@@ -505,11 +509,24 @@ export default function QuestionnaireScreen() {
     })
   }, [currentIndex])
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (!canAdvance || isTransitioning) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
     if (isLastQuestion) {
+      // Check entitlement before generating result
+      let isPremium = false
+      try {
+        const customerInfo = await Purchases.getCustomerInfo()
+        isPremium = !!customerInfo.entitlements.active['premium']
+      } catch {}
+
+      if (!isPremium && readingsUsed >= 2) {
+        router.push('/paywall')
+        return
+      }
+      incrementReadings()
+
       // Build the answer list and navigate to result
       const finalAnswers: QuestionnaireAnswer[] = answers
         .map((a, i) => a !== null ? { questionIndex: i, answerIndex: a } : null)
@@ -529,7 +546,7 @@ export default function QuestionnaireScreen() {
         setIsTransitioning(false)
       }, 50)
     }
-  }, [canAdvance, isTransitioning, isLastQuestion, answers, currentIndex])
+  }, [canAdvance, isTransitioning, isLastQuestion, answers, currentIndex, readingsUsed, incrementReadings])
 
   const handleBack = useCallback(() => {
     if (currentIndex === 0) {

@@ -451,6 +451,20 @@ export default function AuraResultScreen() {
             <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.85}>
               <Text style={styles.shareButtonText}>Share My Aura</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.findPhotographerCta}
+              onPress={() => router.push('/find-photographer')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.findPhotographerCtaTitle}>
+                Want a real photo?
+              </Text>
+              <Text style={styles.findPhotographerCtaSubtitle}>
+                Find a professional aura photographer near you →
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.homeLink} onPress={() => router.replace('/')}>
               <Text style={styles.homeLinkText}>← Back to Home</Text>
             </TouchableOpacity>
@@ -556,6 +570,26 @@ const styles = StyleSheet.create({
   homeLinkText: {
     ...Typography.body,
     color: Colors.textMuted,
+  },
+  findPhotographerCta: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,76,0.4)',
+    backgroundColor: 'rgba(201,168,76,0.06)',
+    alignItems: 'center',
+    gap: 4,
+  },
+  findPhotographerCtaTitle: {
+    ...Typography.h3,
+    color: Colors.gold,
+  },
+  findPhotographerCtaSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
   },
 })
 

@@ -35,22 +35,22 @@ function HomeAuraOrb() {
   useEffect(() => {
     pulse1.value = withRepeat(
       withSequence(
-        withTiming(0.90, { duration: 3200, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.10, { duration: 3200, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.90, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.10, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, true,
     )
     pulse2.value = withDelay(1000, withRepeat(
       withSequence(
-        withTiming(0.93, { duration: 4000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.07, { duration: 4000, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.93, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.07, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, true,
     ))
     pulse3.value = withDelay(2000, withRepeat(
       withSequence(
-        withTiming(0.96, { duration: 5000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.96, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, true,
     ))

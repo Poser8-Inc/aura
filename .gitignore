@@ -4,3 +4,7 @@ dist/
 .env
 .env.local
 *.lock
+supabase/.temp/
+android/build/
+android/.gradle/
+android/app/build/

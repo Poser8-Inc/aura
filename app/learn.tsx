@@ -11,6 +11,7 @@ import {
   UIManager,
 } from 'react-native'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
+import { router } from 'expo-router'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors, AuraColorKey, ChakraInfo } from '@/constants/theme'
 import { BottomNav } from './index'
 
@@ -347,6 +348,18 @@ export default function LearnScreen() {
           </View>
         </InfoSection>
 
+        {/* Find a professional aura photographer */}
+        <TouchableOpacity
+          style={learnCtaStyles.cta}
+          onPress={() => router.push('/find-photographer')}
+          activeOpacity={0.85}
+        >
+          <Text style={learnCtaStyles.ctaTitle}>Want it photographed?</Text>
+          <Text style={learnCtaStyles.ctaBody}>
+            Find a verified professional aura photographer near you →
+          </Text>
+        </TouchableOpacity>
+
         <View style={{ height: Spacing.xl }} />
       </ScrollView>
 
@@ -423,6 +436,30 @@ const bodyStyles = StyleSheet.create({
     color: Colors.textMuted,
     flex: 1,
     lineHeight: 24,
+  },
+})
+
+const learnCtaStyles = StyleSheet.create({
+  cta: {
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,76,0.4)',
+    backgroundColor: 'rgba(201,168,76,0.06)',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ctaTitle: {
+    ...Typography.h3,
+    color: Colors.gold,
+  },
+  ctaBody: {
+    ...Typography.bodySmall,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 })
 

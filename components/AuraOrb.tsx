@@ -69,8 +69,8 @@ export function AuraOrb({
     // Slow inner pulse 0.92 → 1.08 over 3s
     pulse.value = withRepeat(
       withSequence(
-        withTiming(0.92, { duration: 3000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.08, { duration: 3000, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.92, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.08, { duration: 3000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       true,
@@ -79,8 +79,8 @@ export function AuraOrb({
     // Outer glow breathes slower 0.95 → 1.12 over 4.5s
     outerPulse.value = withRepeat(
       withSequence(
-        withTiming(0.95, { duration: 4500, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.12, { duration: 4500, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.95, { duration: 4500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.12, { duration: 4500, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       true,
