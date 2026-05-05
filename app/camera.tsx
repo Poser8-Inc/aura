@@ -297,15 +297,13 @@ export default function CameraScreen() {
 
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
     if (!oracleUrl) {
-      // No Supabase yet — go to result with a generated profile anyway
-      const { generateAuraFromAnswers } = require('@/lib/auraGenerator')
-      const mockAnswers = [
-        { questionIndex: 0, answerIndex: 2 },
-        { questionIndex: 6, answerIndex: 2 },
-      ]
-      ;(global as any).__auraProfile = generateAuraFromAnswers(mockAnswers)
-      ;(global as any).__auraSource = 'camera'
-      router.push('/aura-result')
+      console.error(
+        '[aura/camera] EXPO_PUBLIC_AURA_ORACLE_URL is not set — aura camera disabled'
+      )
+      Alert.alert(
+        'AI service unavailable',
+        'The aura oracle is not configured for this build. Please update the app or contact support.',
+      )
       return
     }
 

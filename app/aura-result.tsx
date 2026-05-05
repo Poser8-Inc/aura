@@ -9,6 +9,7 @@ import {
   Share,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native'
 import { router } from 'expo-router'
 import Animated, {
@@ -278,7 +279,16 @@ export default function AuraResultScreen() {
 
   const fetchClaudeReading = async (p: AuraProfile) => {
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
-    if (!oracleUrl) return // Supabase not configured yet
+    if (!oracleUrl) {
+      console.error(
+        '[aura/aura-result] EXPO_PUBLIC_AURA_ORACLE_URL is not set — using placeholder only'
+      )
+      Alert.alert(
+        'AI service unavailable',
+        'The aura oracle is not configured for this build. Showing a placeholder reading only.',
+      )
+      return
+    }
     setLoadingReading(true)
     try {
       const resp = await fetch(oracleUrl, {
@@ -292,9 +302,11 @@ export default function AuraResultScreen() {
       if (resp.ok) {
         const data = await resp.json()
         if (data.reading) setReading(data.reading)
+      } else {
+        console.warn('[aura/aura-result] oracle returned non-OK status:', resp.status)
       }
     } catch (e) {
-      // Silently fall back to placeholder reading
+      console.warn('[aura/aura-result] oracle fetch failed, keeping placeholder:', e)
     } finally {
       setLoadingReading(false)
     }
