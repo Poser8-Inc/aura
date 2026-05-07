@@ -26,6 +26,7 @@ import { Colors, Typography, Spacing, BorderRadius, AuraColors, ChakraInfo } fro
 import { AuraProfile, ChakraStatus } from '@/lib/auraGenerator'
 import { getActiveReading } from '@/lib/store'
 import { log } from '@/lib/log'
+import { saveReading } from './history'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const ORB_SIZE = Math.min(SCREEN_WIDTH * 0.68, 260)
@@ -279,6 +280,9 @@ export default function AuraResultScreen() {
       if (r) {
         setProfile(r.profile)
         setSource(r.source)
+        // Persist to history. Without this the reading vanishes after the
+        // user leaves this screen — the History tab stays empty.
+        saveReading(r.profile, r.source)
       }
       setHydrated(true)
     })
