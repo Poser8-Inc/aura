@@ -27,8 +27,12 @@ export async function setActiveReading(r: ActiveReading): Promise<void> {
   try {
     await AsyncStorage.setItem(ACTIVE_READING_KEY, JSON.stringify(r))
   } catch (e) {
+    // Best-effort persist. AsyncStorage failures (e.g. full disk) shouldn't crash
+    // the navigation flow — the in-memory store is still authoritative for this
+    // session, and callers (questionnaire.tsx, history.tsx) don't wrap in
+    // try/catch. Matches the swallow pattern used by getActiveReading +
+    // clearActiveReading in this file.
     log.warn('[aura/store] setActiveReading failed:', e)
-    throw e
   }
 }
 

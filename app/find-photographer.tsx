@@ -262,7 +262,8 @@ function PhotographerCard({ photographer }: { photographer: RankedPhotographer }
       : `${Math.round(photographer.distanceMi)} mi`
 
   const openMaps = () => {
-    const q = encodeURIComponent(`${photographer.name} ${photographer.address}`)
+    // Skip falsy fields so we don't end up with "Studio undefined" when address is missing.
+    const q = encodeURIComponent([photographer.name, photographer.address].filter(Boolean).join(' '))
     const url =
       Platform.OS === 'ios'
         ? `https://maps.apple.com/?q=${q}`
