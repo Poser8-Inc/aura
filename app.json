@@ -7,14 +7,14 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.poser8.aura",
+      "bundleIdentifier": "app.templari.aura",
       "supportsTablet": false,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Aura uses your location to find professional aura photographers near you. Your location is never stored or shared."
       }
     },
     "android": {
-      "package": "com.poser8.aura",
+      "package": "app.templari.aura",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#07080F"

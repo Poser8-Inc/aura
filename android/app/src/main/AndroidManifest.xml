@@ -26,7 +26,7 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="com.poser8.aura"/>
+        <data android:scheme="app.templari.aura"/>
       </intent-filter>
     </activity>
   </application>

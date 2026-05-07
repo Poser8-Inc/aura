@@ -91,9 +91,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.poser8.aura'
+    namespace 'app.templari.aura'
     defaultConfig {
-        applicationId 'com.poser8.aura'
+        applicationId 'app.templari.aura'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -1,4 +1,4 @@
-package com.poser8.aura
+package app.templari.aura
 
 import android.app.Application
 import android.content.res.Configuration
