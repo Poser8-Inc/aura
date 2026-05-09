@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -15,6 +16,7 @@ import { AuraOrbSmall } from '@/components/AuraOrb'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors } from '@/constants/theme'
 import { AuraProfile } from '@/lib/auraGenerator'
 import { setActiveReading } from '@/lib/store'
+import { loadSyntheses, type AuraSynthesis } from '@/lib/synthesis'
 import { BottomNav } from './index'
 
 // ─── Stored reading record ────────────────────────────────────────────────────
@@ -24,11 +26,16 @@ interface AuraRecord {
   profile: AuraProfile
   source: 'questionnaire' | 'camera'
   createdAt: string // ISO string
+  thumbBase64?: string // 200x200 JPEG, ~30 KB; only present for camera readings
 }
 
 const STORAGE_KEY = 'aura_readings_v1'
 
-export async function saveReading(profile: AuraProfile, source: 'questionnaire' | 'camera') {
+export async function saveReading(
+  profile: AuraProfile,
+  source: 'questionnaire' | 'camera',
+  thumbBase64?: string,
+) {
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY)
     const existing: AuraRecord[] = stored ? JSON.parse(stored) : []
@@ -37,6 +44,7 @@ export async function saveReading(profile: AuraProfile, source: 'questionnaire' 
       profile,
       source,
       createdAt: new Date().toISOString(),
+      thumbBase64,
     }
     const updated = [record, ...existing].slice(0, 50) // keep last 50
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
@@ -85,7 +93,14 @@ function HistoryItem({ record, index }: { record: AuraRecord; index: number }) {
         {/* Content */}
         <View style={itemStyles.content}>
           <View style={itemStyles.row}>
-            <AuraOrbSmall profile={record.profile} size={52} />
+            {record.thumbBase64 ? (
+              <Image
+                source={{ uri: `data:image/jpeg;base64,${record.thumbBase64}` }}
+                style={itemStyles.thumb}
+              />
+            ) : (
+              <AuraOrbSmall profile={record.profile} size={52} />
+            )}
             <View style={itemStyles.info}>
               <View style={itemStyles.infoTop}>
                 <Text style={[itemStyles.colorName, { color: primaryHex }]}>{primaryLabel} Aura</Text>
@@ -133,6 +148,12 @@ const itemStyles = StyleSheet.create({
     flexDirection: 'row',
     paddingRight: Spacing.lg,
     marginBottom: Spacing.lg,
+  },
+  thumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.bg,
   },
   timeline: {
     width: 40,
@@ -271,16 +292,34 @@ const emptyStyles = StyleSheet.create({
 
 // ─── History Screen ───────────────────────────────────────────────────────────
 
+// Unified history-list item: a reading record OR a synthesis artifact.
+// Both are sorted into one chronological list so the synthesis appears
+// near the two readings it ties together.
+type FeedItem =
+  | { kind: 'reading'; record: AuraRecord }
+  | { kind: 'synthesis'; synth: AuraSynthesis }
+
 export default function HistoryScreen() {
-  const [records, setRecords] = useState<AuraRecord[]>([])
+  const [feed, setFeed] = useState<FeedItem[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then(stored => {
-        if (stored) setRecords(JSON.parse(stored))
+    Promise.all([
+      AsyncStorage.getItem(STORAGE_KEY).then((s) => (s ? (JSON.parse(s) as AuraRecord[]) : [])).catch(() => [] as AuraRecord[]),
+      loadSyntheses().catch(() => [] as AuraSynthesis[]),
+    ])
+      .then(([records, syntheses]) => {
+        const items: FeedItem[] = [
+          ...records.map<FeedItem>((r) => ({ kind: 'reading', record: r })),
+          ...syntheses.map<FeedItem>((s) => ({ kind: 'synthesis', synth: s })),
+        ]
+        items.sort((a, b) => {
+          const ta = a.kind === 'reading' ? a.record.createdAt : a.synth.createdAt
+          const tb = b.kind === 'reading' ? b.record.createdAt : b.synth.createdAt
+          return tb.localeCompare(ta)
+        })
+        setFeed(items)
       })
-      .catch(() => {})
       .finally(() => setLoaded(true))
   }, [])
 
@@ -293,13 +332,19 @@ export default function HistoryScreen() {
       </View>
 
       {/* List or empty */}
-      {loaded && records.length === 0 ? (
+      {loaded && feed.length === 0 ? (
         <EmptyHistory />
       ) : (
         <FlatList
-          data={records}
-          keyExtractor={r => r.id}
-          renderItem={({ item, index }) => <HistoryItem record={item} index={index} />}
+          data={feed}
+          keyExtractor={(item) => (item.kind === 'reading' ? item.record.id : item.synth.id)}
+          renderItem={({ item, index }) =>
+            item.kind === 'reading' ? (
+              <HistoryItem record={item.record} index={index} />
+            ) : (
+              <SynthesisCard synth={item.synth} index={index} />
+            )
+          }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
@@ -309,6 +354,69 @@ export default function HistoryScreen() {
     </SafeAreaView>
   )
 }
+
+// ─── Synthesis card ───────────────────────────────────────────────────────────
+function SynthesisCard({ synth, index }: { synth: AuraSynthesis; index: number }) {
+  const isShock = synth.mode === 'shock'
+  const accent = isShock ? '#FFB87A' : '#7FA7D9'
+  const date = new Date(synth.createdAt)
+  const formatted = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  return (
+    <Animated.View entering={FadeInDown.delay(index * 80).duration(400)} style={synthStyles.wrapper}>
+      <View style={[synthStyles.card, { borderColor: accent + '60' }]}>
+        <View style={synthStyles.headerRow}>
+          <Text style={[synthStyles.glyph, { color: accent }]}>{isShock ? '⚡' : '↗'}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[synthStyles.modeLabel, { color: accent }]}>
+              {isShock ? 'Sudden shift' : 'Drift'}
+            </Text>
+            <Text style={synthStyles.dateText}>{formatted} · synthesis of two readings</Text>
+          </View>
+        </View>
+        <Text style={synthStyles.narrative}>{synth.narrative}</Text>
+      </View>
+    </Animated.View>
+  )
+}
+
+const synthStyles = StyleSheet.create({
+  wrapper: {
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: Colors.bg,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  glyph: {
+    fontSize: 28,
+  },
+  modeLabel: {
+    fontSize: 12,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+  },
+  dateText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  narrative: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Colors.text,
+  },
+})
 
 const styles = StyleSheet.create({
   container: {

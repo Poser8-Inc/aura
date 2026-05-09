@@ -3,11 +3,20 @@ import { useEffect } from 'react'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { Platform, View } from 'react-native'
+import * as NavigationBar from 'expo-navigation-bar'
 import { Colors } from '@/constants/theme'
 import Purchases, { LOG_LEVEL } from 'react-native-purchases'
 import { log } from '@/lib/log'
+import { supabase } from '@/lib/supabase'
 
 export default function RootLayout() {
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setBehaviorAsync('overlay-swipe').catch(() => {})
+      NavigationBar.setVisibilityAsync('hidden').catch(() => {})
+    }
+  }, [])
+
   useEffect(() => {
     const apiKey = Platform.OS === 'ios'
       ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? ''
@@ -20,6 +29,16 @@ export default function RootLayout() {
         log.warn('[rc][aura][configure] Purchases.configure failed:', err)
       }
     }
+  }, [])
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        supabase.auth.signInAnonymously().catch((err) => {
+          log.warn('[aura][auth] signInAnonymously failed:', err)
+        })
+      }
+    })
   }, [])
 
   return (

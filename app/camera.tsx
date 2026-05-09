@@ -16,6 +16,7 @@ import { router } from 'expo-router'
 import Purchases from 'react-native-purchases'
 import { useStore, setActiveReading } from '@/lib/store'
 import { log } from '@/lib/log'
+import { getAccessToken } from '@/lib/supabase'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -269,6 +270,7 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [capturedUri, setCapturedUri] = useState<string | null>(null)
   const [capturedBase64, setCapturedBase64] = useState<string | null>(null)
+  const [capturedThumb, setCapturedThumb] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const cameraRef = useRef<CameraView>(null)
   const readingsUsed = useStore((s) => s.readingsUsed)
@@ -286,8 +288,15 @@ export default function CameraScreen() {
         [{ resize: { width: 512 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
       )
+      // Smaller thumbnail for history persistence (~30 KB base64)
+      const thumb = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 200 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      )
       setCapturedUri(manipulated.uri)
       setCapturedBase64(manipulated.base64 ?? null)
+      setCapturedThumb(thumb.base64 ?? null)
     } catch (e) {
       Alert.alert('Camera Error', 'Could not capture photo. Please try again.')
     }
@@ -330,10 +339,11 @@ export default function CameraScreen() {
       if (!ANON_KEY) {
         throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
       }
+      const accessToken = await getAccessToken()
       const resp = await fetch(oracleUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ANON_KEY}`,
+          'Authorization': `Bearer ${accessToken}`,
           'apikey': ANON_KEY,
           'Content-Type': 'application/json',
         },
@@ -341,7 +351,11 @@ export default function CameraScreen() {
       })
       const data = await resp.json()
       if (data.profile) {
-        await setActiveReading({ profile: data.profile, source: 'camera' })
+        await setActiveReading({
+          profile: data.profile,
+          source: 'camera',
+          capturedBase64: capturedThumb ?? undefined,
+        })
         router.push('/aura-result')
       } else {
         throw new Error('No profile returned')

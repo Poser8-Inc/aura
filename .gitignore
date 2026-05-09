@@ -8,3 +8,7 @@ supabase/.temp/
 android/build/
 android/.gradle/
 android/app/build/
+
+# Encrypted local files
+.enc
+*.enc

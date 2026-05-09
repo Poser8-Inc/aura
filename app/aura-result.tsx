@@ -22,10 +22,13 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated'
 import { AuraOrb } from '@/components/AuraOrb'
+import { PhotoAura } from '@/components/PhotoAura'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors, ChakraInfo } from '@/constants/theme'
 import { AuraProfile, ChakraStatus } from '@/lib/auraGenerator'
 import { getActiveReading } from '@/lib/store'
 import { log } from '@/lib/log'
+import { getAccessToken } from '@/lib/supabase'
+import { maybeGenerateSynthesis } from '@/lib/synthesis'
 import { saveReading } from './history'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
@@ -268,6 +271,7 @@ function buildPlaceholderReading(profile: AuraProfile): AuraReading {
 export default function AuraResultScreen() {
   const [profile, setProfile] = useState<AuraProfile | null>(null)
   const [source, setSource] = useState<'questionnaire' | 'camera'>('questionnaire')
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   const [reading, setReading] = useState<AuraReading | null>(null)
@@ -280,9 +284,14 @@ export default function AuraResultScreen() {
       if (r) {
         setProfile(r.profile)
         setSource(r.source)
+        setPhotoBase64(r.capturedBase64 ?? null)
         // Persist to history. Without this the reading vanishes after the
         // user leaves this screen — the History tab stays empty.
-        saveReading(r.profile, r.source)
+        saveReading(r.profile, r.source, r.capturedBase64)
+        // Best-effort synthesis: if the user has a complementary-source
+        // reading from the last 24h, generate the "drift" / "Whoa" artifact
+        // in the background. Failures are swallowed and logged.
+        maybeGenerateSynthesis().catch((e) => log.warn('[aura-result] synthesis kickoff failed:', e))
       }
       setHydrated(true)
     })
@@ -317,10 +326,11 @@ export default function AuraResultScreen() {
       if (!ANON_KEY) {
         throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
       }
+      const accessToken = await getAccessToken()
       const resp = await fetch(oracleUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ANON_KEY}`,
+          'Authorization': `Bearer ${accessToken}`,
           'apikey': ANON_KEY,
           'Content-Type': 'application/json',
         },
@@ -410,9 +420,13 @@ export default function AuraResultScreen() {
             <Text style={styles.backText}>←  Back</Text>
           </TouchableOpacity>
 
-          {/* The orb */}
+          {/* Photo+aura halo if camera reading; otherwise the symbolic orb */}
           <View style={styles.orbWrapper}>
-            <AuraOrb profile={profile} size={ORB_SIZE} animate />
+            {source === 'camera' && photoBase64 ? (
+              <PhotoAura profile={profile} photoBase64={photoBase64} size={ORB_SIZE} animate />
+            ) : (
+              <AuraOrb profile={profile} size={ORB_SIZE} animate />
+            )}
           </View>
 
           {/* Aura name */}
