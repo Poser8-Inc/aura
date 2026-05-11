@@ -7,11 +7,11 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.poser8.aura",
+      "bundleIdentifier": "app.templari.aura",
       "supportsTablet": false
     },
     "android": {
-      "package": "com.poser8.aura"
+      "package": "app.templari.aura"
     },
     "plugins": [
       "expo-router",
