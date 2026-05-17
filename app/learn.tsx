@@ -286,22 +286,22 @@ export default function LearnScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Learn</Text>
-          <Text style={styles.subtitle}>The science and tradition of auras</Text>
+          <Text style={styles.subtitle}>The history and tradition of auras</Text>
         </View>
 
         {/* What is an aura */}
         <InfoSection title="What is an Aura?" symbol="◉">
           <Text style={bodyStyles.text}>
-            An aura is the electromagnetic energy field that surrounds all living things. While the concept appears across every mystical tradition on Earth, modern physics has given it empirical grounding.
+            In the spiritual traditions of many cultures, an aura is a luminous field said to surround living beings. The concept appears across Hindu, Buddhist, Christian, and many indigenous traditions — often depicted as halos in religious art.
           </Text>
           <Text style={bodyStyles.text}>
-            In 1939, Soviet researcher Semyon Kirlian discovered that photographing objects under high-frequency electrical fields produced striking corona-like images — what became known as Kirlian photography. Later researchers found these fields changed measurably with emotional states, illness, and intention.
+            In 1939, Soviet researcher Semyon Kirlian discovered that photographing objects under high-frequency electrical fields produced striking corona-like images — what became known as Kirlian photography. The effect is now understood to be ordinary corona discharge from moisture and ionization at the photographic plate, not a measurement of any spiritual energy.
           </Text>
           <Text style={bodyStyles.text}>
-            The Theosophical tradition, developed by Helena Blavatsky and later detailed by clairvoyant Charles Leadbeater in "The Chakras" (1927), mapped aura colors to specific psychological and spiritual states with remarkable precision — maps that modern energy healers still use today.
+            The Theosophical tradition, developed by Helena Blavatsky and later detailed by Charles Leadbeater in "The Chakras" (1927), mapped aura colors to specific psychological and spiritual states. These mappings remain popular today among practitioners of energy work as a framework for self-reflection.
           </Text>
           <Text style={bodyStyles.text}>
-            Contemporary science has documented that the human body emits biophotons (measurable light), generates electromagnetic fields visible with SQUID magnetometers, and communicates with other bodies via these fields at distances well beyond physical touch.
+            The aura as commonly described — a colored field readable by sight or photograph — has no scientific validation. Treat the readings in this app as an imaginative, traditional framework for thinking about your inner state, not as measurements of a physical phenomenon.
           </Text>
         </InfoSection>
 

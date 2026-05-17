@@ -523,6 +523,17 @@ export default function AuraResultScreen() {
             </Section>
           )}
 
+          {/* Entertainment disclaimer (Apple 1.1.6 / 4.3(b) alignment). Always
+              visible alongside the reading itself, not buried in legal pages. */}
+          <View style={styles.disclaimerBlock}>
+            <Text style={styles.disclaimerText}>
+              Aura is a reflective entertainment experience. The concept of a
+              visible "aura" has no scientific validation — treat these
+              readings as creative prompts for self-reflection, not as
+              measurements of any real energy field.
+            </Text>
+          </View>
+
           {/* Share button */}
           <Animated.View entering={FadeInDown.delay(700).duration(500)} style={styles.shareBlock}>
             <TouchableOpacity
@@ -680,6 +691,23 @@ const styles = StyleSheet.create({
     ...Typography.bodySmall,
     color: Colors.textMuted,
     fontStyle: 'italic',
+  },
+  disclaimerBlock: {
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  disclaimerText: {
+    ...Typography.bodySmall,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 })
 
