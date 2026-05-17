@@ -137,8 +137,8 @@ function PhotoPreview({
         </Text>
         <Text style={previewStyles.statusSub}>
           {analyzing
-            ? 'Claude Vision is analyzing your aura'
-            : 'Claude Vision will analyze your energy from this photo'}
+            ? 'Generating an artistic interpretation from your photo'
+            : 'We\'ll generate a unique artistic aura visualization inspired by this photo. Same photo → same aura.'}
         </Text>
       </View>
 
@@ -160,7 +160,7 @@ function PhotoPreview({
             accessibilityLabel="Read my aura"
             activeOpacity={0.85}
           >
-            <Text style={previewStyles.analyzeText}>Read My Aura</Text>
+            <Text style={previewStyles.analyzeText}>Visualize My Aura</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -381,7 +381,7 @@ export default function CameraScreen() {
         <View style={camStyles.permBlock}>
           <Text style={camStyles.permTitle}>Camera Access Required</Text>
           <Text style={camStyles.permSub}>
-            The Aura Camera needs access to your front camera to read your energy field.
+            The Aura Camera needs access to your front camera to capture the photo we'll use to generate your visualization.
           </Text>
           <TouchableOpacity
             style={camStyles.permButton}

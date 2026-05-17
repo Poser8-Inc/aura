@@ -1,4 +1,31 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.27.3'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+
+// Auth: validate the Bearer token server-side via Supabase admin so we never
+// trust a userId from the request body. Anonymous Supabase users (created by
+// signInAnonymously on first launch) are fine — they have a real UUID — but
+// unauthenticated callers are rejected.
+async function authenticateRequest(req: Request): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; status: number; body: { error: string; code: string } }
+> {
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { ok: false, status: 401, body: { error: 'Missing Authorization bearer', code: 'NO_AUTH' } }
+  }
+  const token = authHeader.slice(7)
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!supabaseUrl || !serviceKey) {
+    return { ok: false, status: 500, body: { error: 'Auth misconfigured', code: 'AUTH_CONFIG' } }
+  }
+  const admin = createClient(supabaseUrl, serviceKey)
+  const { data, error } = await admin.auth.getUser(token)
+  if (error || !data?.user) {
+    return { ok: false, status: 401, body: { error: 'Invalid session', code: 'INVALID_AUTH' } }
+  }
+  return { ok: true, userId: data.user.id }
+}
 
 // ─── Types (mirrored from client) ─────────────────────────────────────────────
 
@@ -41,6 +68,100 @@ const COLOR_NAMES: Record<string, string> = {
   blue:   'Blue (Throat)',
   indigo: 'Indigo (Third Eye)',
   violet: 'Violet (Crown)',
+}
+
+const CHAKRA_ORDER = ['root','sacral','solarPlexus','heart','throat','thirdEye','crown'] as const
+const CHAKRA_TO_COLOR: Record<string,string> = {
+  root: 'red', sacral: 'orange', solarPlexus: 'yellow', heart: 'green',
+  throat: 'blue', thirdEye: 'indigo', crown: 'violet',
+}
+const TRAITS_BY_COLOR: Record<string,string[]> = {
+  red: ['Deeply grounded in physical reality','Strong survival instincts','Natural protector and provider','Fierce, primal life force','Connected to ancestral wisdom'],
+  orange: ['Overflowing creative energy','Magnetic sensual presence','Emotionally fluid and adaptive','Natural artist and storyteller','Draws pleasure from simple joy'],
+  yellow: ['Radiant personal power','Natural leader and visionary','Strong sense of self-worth','Transforms ideas into reality','Infectious confidence and courage'],
+  green: ['Deep capacity for unconditional love','Natural healer and nurturer','Sees beauty in every person','Creates safe space for others','Harmonizes through compassion'],
+  blue: ['Authentic and fearless self-expression','Natural communicator and teacher','Speaks deep truths others avoid','Voice carries unusual resonance','Lives by integrity and honesty'],
+  indigo: ['Sees beyond the visible','Highly attuned to subtle energies','Pattern recognition beyond logic','Deep access to inner knowing','Bridge between worlds seen and unseen'],
+  violet: ['Touched by the numinous','Channel for higher wisdom','Dissolves illusion of separation','Cosmic perspective on human struggle','Service to the greater whole'],
+}
+const DOMINANT_THEMES: Record<string,string> = {
+  red: 'Embodiment & Survival', orange: 'Creation & Flow',
+  yellow: 'Power & Manifestation', green: 'Love & Healing',
+  blue: 'Truth & Expression', indigo: 'Vision & Intuition',
+  violet: 'Transcendence & Unity',
+}
+const ENERGY_LEVELS = ['depleted','building','balanced','overflowing'] as const
+
+/**
+ * Build a deterministic AuraProfile from the SHA-256 of an image. Same image
+ * always yields the same profile — this is the design point. We are NOT
+ * measuring aura (which is not a physical phenomenon); we are providing a
+ * stable, reproducible artistic interpretation keyed to the photo.
+ */
+async function profileFromImageHash(imageBase64: string): Promise<AuraProfile> {
+  // SHA-256 over raw image bytes. Available in Deno via Web Crypto.
+  const bytes = Uint8Array.from(atob(imageBase64), c => c.charCodeAt(0))
+  const hashBuf = await crypto.subtle.digest('SHA-256', bytes)
+  const hash = new Uint8Array(hashBuf)
+
+  // Derive 7 chakra scores in [0,100] from 7 hash bytes (positions 0..6).
+  // Bias center to ~55 so most profiles read as "open/balanced", which
+  // matches the questionnaire's neutral baseline of 50 + small deltas.
+  const scores: number[] = []
+  for (let i = 0; i < 7; i++) {
+    const raw = hash[i] // 0..255
+    scores.push(Math.max(0, Math.min(100, Math.round(20 + (raw / 255) * 70))))
+  }
+
+  const chakraStatus: ChakraStatus[] = CHAKRA_ORDER.map((chakra, i) => ({
+    chakra,
+    score: scores[i],
+    status: scoreToStatus(scores[i]),
+  }))
+
+  const ranked = [...chakraStatus].sort((a, b) => b.score - a.score)
+  const primaryColor = CHAKRA_TO_COLOR[ranked[0].chakra]
+  const secondaryColor = CHAKRA_TO_COLOR[ranked[1].chakra]
+  const tertiaryColor = CHAKRA_TO_COLOR[ranked[2].chakra]
+
+  const traitPool = TRAITS_BY_COLOR[primaryColor]
+  const traitSeed = hash[7] // independent byte
+  const primaryTraits = [
+    traitPool[traitSeed % traitPool.length],
+    traitPool[(traitSeed + 1) % traitPool.length],
+    traitPool[(traitSeed + 2) % traitPool.length],
+  ]
+
+  const avg = scores.reduce((s, v) => s + v, 0) / 7
+  let energyLevel: AuraProfile['energyLevel']
+  if (avg < 35) energyLevel = 'depleted'
+  else if (avg < 55) energyLevel = 'building'
+  else if (avg < 75) energyLevel = 'balanced'
+  else energyLevel = 'overflowing'
+
+  // Short hash hex for context display
+  const hashHex = Array.from(hash.slice(0, 4))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+
+  return {
+    primaryColor,
+    secondaryColor,
+    tertiaryColor,
+    chakraStatus,
+    primaryTraits,
+    energyLevel,
+    dominantTheme: DOMINANT_THEMES[primaryColor],
+    answersHash: `Artistic visualization (photo signature ${hashHex})`,
+  }
+}
+
+function scoreToStatus(score: number): ChakraStatus['status'] {
+  if (score < 20) return 'blocked'
+  if (score < 40) return 'weak'
+  if (score < 60) return 'balanced'
+  if (score < 80) return 'open'
+  return 'radiant'
 }
 
 // ─── System prompt ────────────────────────────────────────────────────────────
@@ -99,57 +220,29 @@ Requirements:
 - guidance: actionable, specific — not "meditate" but the specific type and approach for this field`
 }
 
-// ─── Build prompt for camera/vision path ─────────────────────────────────────
-
-function buildVisionPrompt(): string {
-  return `You are analyzing a selfie photo to read the person's aura.
-
-Analyze the following subtle physical cues that correlate with aura state:
-- Skin tone and luminosity (vitality, prana levels)
-- Eye brightness, focus, and depth (consciousness, clarity)
-- Facial muscle tension vs. relaxation (stress, peace)
-- Overall posture and bearing visible in the face
-- Color temperature and warmth of the skin
-- Micro-expressions and emotional quality
-- The energetic quality of their gaze
-
-Based on these physical indicators, determine their dominant aura color and complete profile.
-
-Then provide a reading using this JSON structure (no markdown):
-{
-  "profile": {
-    "primaryColor": "one of: red|orange|yellow|green|blue|indigo|violet",
-    "secondaryColor": "one of: red|orange|yellow|green|blue|indigo|violet",
-    "tertiaryColor": "one of: red|orange|yellow|green|blue|indigo|violet",
-    "chakraStatus": [
-      {"chakra": "root", "status": "balanced", "score": 65},
-      {"chakra": "sacral", "status": "open", "score": 72},
-      {"chakra": "solarPlexus", "status": "balanced", "score": 58},
-      {"chakra": "heart", "status": "open", "score": 78},
-      {"chakra": "throat", "status": "weak", "score": 42},
-      {"chakra": "thirdEye", "status": "radiant", "score": 88},
-      {"chakra": "crown", "status": "open", "score": 71}
-    ],
-    "primaryTraits": ["trait1", "trait2", "trait3"],
-    "energyLevel": "one of: depleted|building|balanced|overflowing",
-    "dominantTheme": "brief poetic theme description",
-    "answersHash": "Aura Camera Reading"
-  },
-  "reading": {
-    "energyField": ["paragraph1", "paragraph2", "paragraph3"],
-    "strengths": ["strength1", "strength2", "strength3", "strength4"],
-    "blocks": ["block1", "block2"],
-    "chakraInsights": "paragraph about chakra pattern",
-    "guidance": {
-      "practices": ["practice1", "practice2", "practice3"],
-      "colors": ["color-advice1", "color-advice2"],
-      "crystals": ["crystal1", "crystal2"]
-    }
-  }
-}
-
-Be specific to what you observe in THIS person's face. Make them feel truly seen.`
-}
+// ─── Build prompt for photo-derived reading path ─────────────────────────────
+// REMOVED 2026-05-17: the prior camera prompt instructed Claude vision to read
+// "aura state" from "skin tone and luminosity (vitality, prana levels), eye
+// brightness, focus, and depth (consciousness, clarity)" etc. There is no
+// physical phenomenon called "aura" — every controlled test has returned
+// chance-level results (see CV_REPORT_2026-05-17.md), and the only EM emission
+// the body produces in any imageable band is thermal IR ~9-10 μm, which a
+// phone CMOS is physically blind to. Asking an LLM to "detect" an
+// unmeasurable phenomenon from a selfie is a textbook Apple 1.1.6 risk
+// ("False information and features... Stating that the app is 'for
+// entertainment purposes' won't overcome this guideline") and an FTC
+// substantiation risk (Lumosity precedent).
+//
+// The camera path now produces a deterministic-per-photo aura profile by
+// hashing the image bytes and routing through the same chakra-weight
+// generator the questionnaire uses. Same photo → same aura, every time.
+// That alone beats every shipping competitor whose #1 complaint is
+// "I take two photos seconds apart and get different auras."
+//
+// Phase 2 will add MediaPipe Selfie Segmentation + React Native Skia
+// rendering for a genuinely beautiful, deterministic visual halo. The
+// narrative layer (this file) stays — what changed is that it no longer
+// pretends to measure anything.
 
 // ─── Edge function handler ────────────────────────────────────────────────────
 
@@ -167,6 +260,16 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
+  }
+
+  // Authenticate before any work — protects against unauthenticated callers
+  // burning Anthropic budget on this endpoint.
+  const auth = await authenticateRequest(req)
+  if (!auth.ok) {
+    return new Response(JSON.stringify(auth.body), {
+      status: auth.status,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
@@ -195,39 +298,36 @@ Deno.serve(async (req: Request) => {
     let responseText: string
 
     if (source === 'camera' && body.imageBase64) {
-      // Vision path — send selfie to Claude
+      // Deterministic photo-derived profile. The LLM is no longer asked to
+      // "detect" aura from a selfie — we hash the image bytes and use that
+      // as a stable random seed feeding the same chakra-weight generator the
+      // questionnaire uses. Same photo → same aura, every time. Then we
+      // generate the narrative through the standard SYSTEM_PROMPT path so
+      // the text quality matches the questionnaire reading.
+      const photoProfile = await profileFromImageHash(body.imageBase64)
+
       const message = await anthropic.messages.create({
         model: 'claude-opus-4-5',
-        max_tokens: 2048,
+        max_tokens: 1800,
         system: SYSTEM_PROMPT,
         messages: [
           {
             role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: body.imageBase64,
-                },
-              },
-              {
-                type: 'text',
-                text: buildVisionPrompt(),
-              },
-            ],
+            content: buildQuestionnairePrompt(photoProfile),
           },
         ],
       })
       responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-      const parsed = JSON.parse(responseText)
-      return new Response(JSON.stringify(parsed), {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      })
+      const reading: AuraReading = JSON.parse(responseText)
+      return new Response(
+        JSON.stringify({ profile: photoProfile, reading }),
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
 
     } else if (body.profile) {
       // Questionnaire path — text only
