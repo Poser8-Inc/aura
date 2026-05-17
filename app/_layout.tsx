@@ -18,9 +18,12 @@ export default function RootLayout() {
   }, [])
 
   useEffect(() => {
+    // RC public SDK keys are safe to embed client-side per RevenueCat docs.
+    // Fallback to hardcoded values so missing EXPO_PUBLIC_* env vars at build
+    // time don't silently skip Purchases.configure (bug seen on preview builds).
     const apiKey = Platform.OS === 'ios'
-      ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? ''
-      : process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? ''
+      ? (process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || 'appl_sduYBgvZbdDiZKSTnLusMUCvnMe')
+      : (process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || 'goog_ewXuQUIyIPxPFkApTRFcQsLIktY')
     if (apiKey) {
       if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.WARN)
       try {
