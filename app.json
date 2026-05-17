@@ -11,7 +11,9 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Aura uses your location to find professional aura photographers near you. Your location is never stored or shared.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Used to capture a selfie for generating your aura visualization.",
+        "NSPhotoLibraryUsageDescription": "Used to select a photo from your library for your aura visualization."
       }
     },
     "android": {
