@@ -16,3 +16,4 @@ android/app/build/
 # Encrypted local files
 .enc
 *.enc
+dist/
