@@ -4,5 +4,15 @@ ios/*
 android/
 .expo/
 .env
+.env.local
+*.lock
 *.tsbuildinfo
 .DS_Store
+supabase/.temp/
+android/build/
+android/.gradle/
+android/app/build/
+
+# Encrypted local files
+.enc
+*.enc

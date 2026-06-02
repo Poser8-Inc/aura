@@ -13,6 +13,10 @@ import {
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { router } from 'expo-router'
+import Purchases from 'react-native-purchases'
+import { useStore, setActiveReading } from '@/lib/store'
+import { log } from '@/lib/log'
+import { getAccessToken } from '@/lib/supabase'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -37,8 +41,8 @@ function CropRing({ size }: { size: number }) {
   useEffect(() => {
     glow.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sine) }),
-        withTiming(0.4, { duration: 1800, easing: Easing.inOut(Easing.sine) }),
+        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(0.4, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, false,
     )
@@ -133,19 +137,30 @@ function PhotoPreview({
         </Text>
         <Text style={previewStyles.statusSub}>
           {analyzing
-            ? 'Claude Vision is analyzing your aura'
-            : 'Claude Vision will analyze your energy from this photo'}
+            ? 'Generating an artistic interpretation from your photo'
+            : 'We\'ll generate a unique artistic aura visualization inspired by this photo. Same photo → same aura.'}
         </Text>
       </View>
 
       {/* Buttons */}
       {!analyzing && (
         <View style={previewStyles.buttonRow}>
-          <TouchableOpacity style={previewStyles.retakeButton} onPress={onRetake}>
+          <TouchableOpacity
+            style={previewStyles.retakeButton}
+            onPress={onRetake}
+            accessibilityRole="button"
+            accessibilityLabel="Retake photo"
+          >
             <Text style={previewStyles.retakeText}>Retake</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={previewStyles.analyzeButton} onPress={onAnalyze} activeOpacity={0.85}>
-            <Text style={previewStyles.analyzeText}>Read My Aura</Text>
+          <TouchableOpacity
+            style={previewStyles.analyzeButton}
+            onPress={onAnalyze}
+            accessibilityRole="button"
+            accessibilityLabel="Read my aura"
+            activeOpacity={0.85}
+          >
+            <Text style={previewStyles.analyzeText}>Visualize My Aura</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -254,8 +269,12 @@ const previewStyles = StyleSheet.create({
 export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [capturedUri, setCapturedUri] = useState<string | null>(null)
+  const [capturedBase64, setCapturedBase64] = useState<string | null>(null)
+  const [capturedThumb, setCapturedThumb] = useState<string | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const cameraRef = useRef<CameraView>(null)
+  const readingsUsed = useStore((s) => s.readingsUsed)
+  const incrementReadings = useStore((s) => s.incrementReadings)
 
   const handleCapture = async () => {
     if (!cameraRef.current) return
@@ -269,41 +288,74 @@ export default function CameraScreen() {
         [{ resize: { width: 512 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true },
       )
+      // Smaller thumbnail for history persistence (~30 KB base64)
+      const thumb = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [{ resize: { width: 200 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+      )
       setCapturedUri(manipulated.uri)
-      // Store base64 for upload
-      ;(global as any).__capturedBase64 = manipulated.base64
+      setCapturedBase64(manipulated.base64 ?? null)
+      setCapturedThumb(thumb.base64 ?? null)
     } catch (e) {
       Alert.alert('Camera Error', 'Could not capture photo. Please try again.')
     }
   }
 
   const handleAnalyze = async () => {
+    // Check entitlement before analysis
+    let isPremium = false
+    try {
+      const customerInfo = await Purchases.getCustomerInfo()
+      isPremium = !!customerInfo.entitlements.active['premium']
+    } catch (err) {
+      log.warn('[rc][aura][camera] getCustomerInfo failed:', err)
+      // isPremium stays false (defensive). Don't reroute to paywall on transient RC errors —
+      // free-tier counter-based gate below already enforces correct UX.
+    }
+
+    if (!isPremium && readingsUsed >= 2) {
+      router.push('/paywall')
+      return
+    }
+    incrementReadings()
+
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
     if (!oracleUrl) {
-      // No Supabase yet — go to result with a generated profile anyway
-      const { generateAuraFromAnswers } = require('@/lib/auraGenerator')
-      const mockAnswers = [
-        { questionIndex: 0, answerIndex: 2 },
-        { questionIndex: 6, answerIndex: 2 },
-      ]
-      ;(global as any).__auraProfile = generateAuraFromAnswers(mockAnswers)
-      ;(global as any).__auraSource = 'camera'
-      router.push('/aura-result')
+      log.error(
+        '[aura/camera] EXPO_PUBLIC_AURA_ORACLE_URL is not set — aura camera disabled'
+      )
+      Alert.alert(
+        'AI service unavailable',
+        'The aura oracle is not configured for this build. Please update the app or contact support.',
+      )
       return
     }
 
     setAnalyzing(true)
     try {
-      const base64 = (global as any).__capturedBase64 ?? ''
+      const base64 = capturedBase64 ?? ''
+      const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+      if (!ANON_KEY) {
+        throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
+      }
+      const accessToken = await getAccessToken()
       const resp = await fetch(oracleUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': ANON_KEY,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ imageBase64: base64, source: 'camera' }),
       })
       const data = await resp.json()
       if (data.profile) {
-        ;(global as any).__auraProfile = data.profile
-        ;(global as any).__auraSource = 'camera'
+        await setActiveReading({
+          profile: data.profile,
+          source: 'camera',
+          capturedBase64: capturedThumb ?? undefined,
+        })
         router.push('/aura-result')
       } else {
         throw new Error('No profile returned')
@@ -329,12 +381,22 @@ export default function CameraScreen() {
         <View style={camStyles.permBlock}>
           <Text style={camStyles.permTitle}>Camera Access Required</Text>
           <Text style={camStyles.permSub}>
-            The Aura Camera needs access to your front camera to read your energy field.
+            The Aura Camera needs access to your front camera to capture the photo we'll use to generate your visualization.
           </Text>
-          <TouchableOpacity style={camStyles.permButton} onPress={requestPermission}>
+          <TouchableOpacity
+            style={camStyles.permButton}
+            onPress={requestPermission}
+            accessibilityRole="button"
+            accessibilityLabel="Allow camera access"
+          >
             <Text style={camStyles.permButtonText}>Allow Camera</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={camStyles.backLink} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={camStyles.backLink}
+            onPress={() => router.back()}
+            accessibilityRole="link"
+            accessibilityLabel="Go back"
+          >
             <Text style={camStyles.backLinkText}>← Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -359,7 +421,12 @@ export default function CameraScreen() {
 
           {/* Top instruction */}
           <View style={camStyles.topHint}>
-            <TouchableOpacity onPress={() => router.back()} style={camStyles.closeButton}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={camStyles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel="Close camera"
+            >
               <Text style={camStyles.closeText}>✕</Text>
             </TouchableOpacity>
             <Text style={camStyles.hintTitle}>Aura Camera</Text>
@@ -379,7 +446,13 @@ export default function CameraScreen() {
 
           {/* Shutter */}
           <View style={camStyles.shutterRow}>
-            <TouchableOpacity style={camStyles.shutter} onPress={handleCapture} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={camStyles.shutter}
+              onPress={handleCapture}
+              accessibilityRole="button"
+              accessibilityLabel="Capture photo"
+              activeOpacity={0.85}
+            >
               <View style={camStyles.shutterInner} />
             </TouchableOpacity>
           </View>
