@@ -9,6 +9,7 @@ import {
   Share,
   ActivityIndicator,
   Platform,
+  Alert,
 } from 'react-native'
 import { router } from 'expo-router'
 import Animated, {
@@ -21,8 +22,14 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated'
 import { AuraOrb } from '@/components/AuraOrb'
+import { PhotoAura } from '@/components/PhotoAura'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors, ChakraInfo } from '@/constants/theme'
 import { AuraProfile, ChakraStatus } from '@/lib/auraGenerator'
+import { getActiveReading } from '@/lib/store'
+import { log } from '@/lib/log'
+import { getAccessToken } from '@/lib/supabase'
+import { maybeGenerateSynthesis } from '@/lib/synthesis'
+import { saveReading } from './history'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const ORB_SIZE = Math.min(SCREEN_WIDTH * 0.68, 260)
@@ -262,41 +269,89 @@ function buildPlaceholderReading(profile: AuraProfile): AuraReading {
 // ─── Main result screen ───────────────────────────────────────────────────────
 
 export default function AuraResultScreen() {
-  const profile: AuraProfile | null = (global as any).__auraProfile ?? null
-  const source: 'questionnaire' | 'camera' = (global as any).__auraSource ?? 'questionnaire'
+  const [profile, setProfile] = useState<AuraProfile | null>(null)
+  const [source, setSource] = useState<'questionnaire' | 'camera'>('questionnaire')
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null)
+  const [hydrated, setHydrated] = useState(false)
 
   const [reading, setReading] = useState<AuraReading | null>(null)
   const [loadingReading, setLoadingReading] = useState(false)
 
   useEffect(() => {
-    if (!profile) return
+    let cancelled = false
+    getActiveReading().then((r) => {
+      if (cancelled) return
+      if (r) {
+        setProfile(r.profile)
+        setSource(r.source)
+        setPhotoBase64(r.capturedBase64 ?? null)
+        // Persist to history. Without this the reading vanishes after the
+        // user leaves this screen — the History tab stays empty.
+        saveReading(r.profile, r.source, r.capturedBase64)
+        // Best-effort synthesis: if the user has a complementary-source
+        // reading from the last 24h, generate the "drift" / "Whoa" artifact
+        // in the background. Failures are swallowed and logged.
+        maybeGenerateSynthesis().catch((e) => log.warn('[aura-result] synthesis kickoff failed:', e))
+      }
+      setHydrated(true)
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    if (!hydrated || !profile) return
     // Immediately show placeholder — no wait
     setReading(buildPlaceholderReading(profile))
     // Then try to fetch from Claude via Supabase Edge Function
-    fetchClaudeReading(profile)
-  }, [])
+    fetchClaudeReading(profile, () => cancelled)
+    return () => { cancelled = true }
+  }, [hydrated, profile])
 
-  const fetchClaudeReading = async (p: AuraProfile) => {
+  const fetchClaudeReading = async (p: AuraProfile, isCancelled: () => boolean = () => false) => {
     const oracleUrl = process.env.EXPO_PUBLIC_AURA_ORACLE_URL
-    if (!oracleUrl) return // Supabase not configured yet
+    if (!oracleUrl) {
+      log.error(
+        '[aura/aura-result] EXPO_PUBLIC_AURA_ORACLE_URL is not set — using placeholder only'
+      )
+      Alert.alert(
+        'AI service unavailable',
+        'The aura oracle is not configured for this build. Showing a placeholder reading only.',
+      )
+      return
+    }
     setLoadingReading(true)
     try {
+      const ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+      if (!ANON_KEY) {
+        throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set')
+      }
+      const accessToken = await getAccessToken()
       const resp = await fetch(oracleUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': ANON_KEY,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           profile: p,
           source,
         }),
       })
+      if (isCancelled()) return
       if (resp.ok) {
         const data = await resp.json()
+        if (isCancelled()) return
         if (data.reading) setReading(data.reading)
+      } else {
+        log.warn('[aura/aura-result] oracle returned non-OK status:', resp.status)
       }
     } catch (e) {
-      // Silently fall back to placeholder reading
+      if (isCancelled()) return
+      log.warn('[aura/aura-result] oracle fetch failed, keeping placeholder:', e)
     } finally {
-      setLoadingReading(false)
+      if (!isCancelled()) setLoadingReading(false)
     }
   }
 
@@ -309,11 +364,24 @@ export default function AuraResultScreen() {
     })
   }
 
+  if (!hydrated) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={Colors.aura.violet} />
+      </View>
+    )
+  }
+
   if (!profile) {
     return (
       <View style={{ flex: 1, backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: Colors.textMuted, ...Typography.body }}>No reading found. Take the questionnaire first.</Text>
-        <TouchableOpacity onPress={() => router.replace('/')} style={{ marginTop: Spacing.xl }}>
+        <TouchableOpacity
+          onPress={() => router.replace('/')}
+          style={{ marginTop: Spacing.xl }}
+          accessibilityRole="link"
+          accessibilityLabel="Go home"
+        >
           <Text style={{ color: Colors.aura.violet, ...Typography.body }}>Go Home</Text>
         </TouchableOpacity>
       </View>
@@ -343,13 +411,22 @@ export default function AuraResultScreen() {
           />
 
           {/* Back button */}
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="link"
+            accessibilityLabel="Back"
+          >
             <Text style={styles.backText}>←  Back</Text>
           </TouchableOpacity>
 
-          {/* The orb */}
+          {/* Photo+aura halo if camera reading; otherwise the symbolic orb */}
           <View style={styles.orbWrapper}>
-            <AuraOrb profile={profile} size={ORB_SIZE} animate />
+            {source === 'camera' && photoBase64 ? (
+              <PhotoAura profile={profile} photoBase64={photoBase64} size={ORB_SIZE} animate />
+            ) : (
+              <AuraOrb profile={profile} size={ORB_SIZE} animate />
+            )}
           </View>
 
           {/* Aura name */}
@@ -446,12 +523,50 @@ export default function AuraResultScreen() {
             </Section>
           )}
 
+          {/* Entertainment disclaimer (Apple 1.1.6 / 4.3(b) alignment). Always
+              visible alongside the reading itself, not buried in legal pages. */}
+          <View style={styles.disclaimerBlock}>
+            <Text style={styles.disclaimerText}>
+              Aura is a reflective entertainment experience. The concept of a
+              visible "aura" has no scientific validation — treat these
+              readings as creative prompts for self-reflection, not as
+              measurements of any real energy field.
+            </Text>
+          </View>
+
           {/* Share button */}
           <Animated.View entering={FadeInDown.delay(700).duration(500)} style={styles.shareBlock}>
-            <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleShare}
+              accessibilityRole="button"
+              accessibilityLabel="Share my aura"
+              activeOpacity={0.85}
+            >
               <Text style={styles.shareButtonText}>Share My Aura</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.homeLink} onPress={() => router.replace('/')}>
+
+            <TouchableOpacity
+              style={styles.findPhotographerCta}
+              onPress={() => router.push('/find-photographer')}
+              accessibilityRole="link"
+              accessibilityLabel="Find a professional aura photographer"
+              activeOpacity={0.85}
+            >
+              <Text style={styles.findPhotographerCtaTitle}>
+                Want a real photo?
+              </Text>
+              <Text style={styles.findPhotographerCtaSubtitle}>
+                Find a professional aura photographer near you →
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.homeLink}
+              onPress={() => router.replace('/')}
+              accessibilityRole="link"
+              accessibilityLabel="Back to home"
+            >
               <Text style={styles.homeLinkText}>← Back to Home</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -556,6 +671,43 @@ const styles = StyleSheet.create({
   homeLinkText: {
     ...Typography.body,
     color: Colors.textMuted,
+  },
+  findPhotographerCta: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(201,168,76,0.4)',
+    backgroundColor: 'rgba(201,168,76,0.06)',
+    alignItems: 'center',
+    gap: 4,
+  },
+  findPhotographerCtaTitle: {
+    ...Typography.h3,
+    color: Colors.gold,
+  },
+  findPhotographerCtaSubtitle: {
+    ...Typography.bodySmall,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+  },
+  disclaimerBlock: {
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.lg,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  disclaimerText: {
+    ...Typography.bodySmall,
+    color: Colors.textMuted,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 })
 

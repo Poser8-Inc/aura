@@ -8,14 +8,65 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "app.templari.aura",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Aura uses your location to find professional aura photographers near you. Your location is never stored or shared.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Used to capture a selfie for generating your aura visualization.",
+        "NSPhotoLibraryUsageDescription": "Used to select a photo from your library for your aura visualization."
+      }
     },
     "android": {
-      "package": "app.templari.aura"
+      "package": "app.templari.aura",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07080F"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
-      "expo-camera"
-    ]
+      "expo-camera",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Aura uses your location to find professional aura photographers near you. Your location is never stored or shared.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.25",
+            "targetSdkVersion": 35,
+            "compileSdkVersion": 35
+          }
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#07080F"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0d57e4c7-648b-46ec-ab82-c858d2124471"
+      }
+    },
+    "owner": "poser8"
   }
 }

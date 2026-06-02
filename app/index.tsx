@@ -35,22 +35,22 @@ function HomeAuraOrb() {
   useEffect(() => {
     pulse1.value = withRepeat(
       withSequence(
-        withTiming(0.90, { duration: 3200, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.10, { duration: 3200, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.90, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.10, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, true,
     )
     pulse2.value = withDelay(1000, withRepeat(
       withSequence(
-        withTiming(0.93, { duration: 4000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.07, { duration: 4000, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.93, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.07, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, true,
     ))
     pulse3.value = withDelay(2000, withRepeat(
       withSequence(
-        withTiming(0.96, { duration: 5000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.96, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.14, { duration: 5000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, true,
     ))
@@ -133,6 +133,9 @@ function BottomNav({ active }: { active: 'home' | 'history' | 'learn' }) {
           key={tab.key}
           style={styles.navItem}
           onPress={() => tab.key !== active && router.push(tab.route)}
+          accessibilityRole="link"
+          accessibilityLabel={`${tab.label} tab`}
+          accessibilityState={{ selected: tab.key === active }}
           activeOpacity={0.7}
         >
           <Text style={[styles.navSymbol, tab.key === active && styles.navSymbolActive]}>
@@ -188,6 +191,8 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.primaryButton}
             onPress={() => router.push('/questionnaire')}
+            accessibilityRole="link"
+            accessibilityLabel="Take the reading"
             activeOpacity={0.85}
           >
             <Text style={styles.primaryButtonText}>Take the Reading</Text>
@@ -197,6 +202,8 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.secondaryButton}
             onPress={() => router.push('/camera')}
+            accessibilityRole="link"
+            accessibilityLabel="Open aura camera"
             activeOpacity={0.85}
           >
             <Text style={styles.secondaryButtonText}>Aura Camera</Text>

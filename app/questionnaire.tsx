@@ -22,8 +22,11 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated'
 import * as Haptics from 'expo-haptics'
+import Purchases from 'react-native-purchases'
 import { Colors, Typography, Spacing, BorderRadius, AuraColors } from '@/constants/theme'
 import { QuestionnaireAnswer, generateAuraFromAnswers } from '@/lib/auraGenerator'
+import { useStore, setActiveReading } from '@/lib/store'
+import { log } from '@/lib/log'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -235,6 +238,9 @@ function ColorSwatch({
           selected && { borderColor: colorHex, backgroundColor: colorHex + '22' },
         ]}
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}${sublabel ? ', ' + sublabel : ''}`}
+        accessibilityState={{ selected }}
         activeOpacity={0.8}
       >
         <View style={[swatchStyles.dot, { backgroundColor: colorHex }]} />
@@ -339,6 +345,9 @@ function AnswerOption({
       <TouchableOpacity
         style={optStyles.inner}
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}${sublabel ? ', ' + sublabel : ''}`}
+        accessibilityState={{ selected }}
         activeOpacity={0.85}
       >
         <View style={[optStyles.indicator, selected && optStyles.indicatorActive]}>
@@ -490,6 +499,8 @@ export default function QuestionnaireScreen() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(QUESTIONS.length).fill(null))
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const readingsUsed = useStore((s) => s.readingsUsed)
+  const incrementReadings = useStore((s) => s.incrementReadings)
 
   const currentQuestion = QUESTIONS[currentIndex]
   const currentAnswer = answers[currentIndex]
@@ -505,22 +516,35 @@ export default function QuestionnaireScreen() {
     })
   }, [currentIndex])
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (!canAdvance || isTransitioning) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
     if (isLastQuestion) {
+      // Check entitlement before generating result
+      let isPremium = false
+      try {
+        const customerInfo = await Purchases.getCustomerInfo()
+        isPremium = !!customerInfo.entitlements.active['premium']
+      } catch (err) {
+        log.warn('[rc][aura][questionnaire] getCustomerInfo failed:', err)
+        // isPremium stays false (defensive). Don't reroute to paywall on transient RC errors —
+        // free-tier counter-based gate below already enforces correct UX.
+      }
+
+      if (!isPremium && readingsUsed >= 2) {
+        router.push('/paywall')
+        return
+      }
+      incrementReadings()
+
       // Build the answer list and navigate to result
       const finalAnswers: QuestionnaireAnswer[] = answers
         .map((a, i) => a !== null ? { questionIndex: i, answerIndex: a } : null)
         .filter(Boolean) as QuestionnaireAnswer[]
 
       const profile = generateAuraFromAnswers(finalAnswers)
-      // Store in global so result screen can read it
-      // (For production use zustand or AsyncStorage — this is fine for MVP)
-      ;(global as any).__auraProfile = profile
-      ;(global as any).__auraSource = 'questionnaire'
-
+      await setActiveReading({ profile, source: 'questionnaire' })
       router.push('/aura-result')
     } else {
       setIsTransitioning(true)
@@ -529,7 +553,7 @@ export default function QuestionnaireScreen() {
         setIsTransitioning(false)
       }, 50)
     }
-  }, [canAdvance, isTransitioning, isLastQuestion, answers, currentIndex])
+  }, [canAdvance, isTransitioning, isLastQuestion, answers, currentIndex, readingsUsed, incrementReadings])
 
   const handleBack = useCallback(() => {
     if (currentIndex === 0) {
@@ -547,7 +571,12 @@ export default function QuestionnaireScreen() {
     <SafeAreaView style={qStyles.container}>
       {/* Top bar */}
       <View style={qStyles.topBar}>
-        <TouchableOpacity onPress={handleBack} style={qStyles.backButton}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={qStyles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
           <Text style={qStyles.backArrow}>←</Text>
         </TouchableOpacity>
         <ProgressBar current={currentIndex + (canAdvance ? 1 : 0)} total={QUESTIONS.length} />
@@ -570,6 +599,9 @@ export default function QuestionnaireScreen() {
         <TouchableOpacity
           style={[qStyles.nextButton, !canAdvance && qStyles.nextButtonDisabled]}
           onPress={handleNext}
+          accessibilityRole="button"
+          accessibilityLabel={isLastQuestion ? 'Reveal my aura' : 'Continue'}
+          accessibilityState={{ disabled: !canAdvance }}
           activeOpacity={canAdvance ? 0.85 : 1}
         >
           <Text style={[qStyles.nextButtonText, !canAdvance && qStyles.nextButtonTextDisabled]}>
